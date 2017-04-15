@@ -1,0 +1,204 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:3 \n:nil ^:t arch:headline
+#+OPTIONS: author:t broken-links:nil c:nil creator:nil
+#+OPTIONS: d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t num:t
+#+OPTIONS: p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t
+#+OPTIONS: timestamp:t title:t toc:t todo:t |:t
+#+TITLE: Project Catalogue
+#+DATE: <2017-04-05 Wed>
+#+AUTHOR: Edward John Steere
+#+EMAIL: edward.steere@gmail.com
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 26.0.50.1 (Org mode 9.0.5)
+
+* Introduction
+This is a literate program which demonstrates the power of using
+Emacs, org-mode and Emacs Lisp to create a Clojure microservice.
+
+** Start NREPL
+This step requires that you have cider installed as well as Clojure
+mode.  It'll just run the same =jack-in= command as you usually would
+when you're editing a file.  Run this block before continuing.
+
+#+BEGIN_SRC emacs-lisp :results none
+  (call-interactively 'cider-jack-in)
+#+END_SRC
+
+** Start the Service
+This block will start your web service.  We run it with an optional
+flag which makes it run asynchronously so that you can continue
+sending commands to the REPL while it's going.
+
+#+BEGIN_SRC emacs-lisp :results none
+  (call-interactively #'org-babel-tangle)
+
+  (cider-load-file "src/project_catalog/server.clj")
+
+  (nrepl-sync-request:eval "(project-catalog.server/run-dev)"
+                           (cider-current-connection)
+                           (cider-current-ns))
+#+END_SRC
+
+*** Routes
+This section will cover the routes which we're defining in our
+service.
+
+Idea: pass the services and routes in from an org mode table!!!
+
+We have an =/about= which explains the purpose of the service,
+
+#+BEGIN_SRC clojure :noweb-ref routes :results none
+  (require '[project-catalog.services :as services])
+
+  (def routes #{["/"                       :get  `services/home-page]
+                ["/projects"               :post `services/add-project]
+                ["/projects"               :get  `services/get-projects]
+                ["/projects/:project-name" :get  `services/get-project]
+                ["/about"                  :get  `services/about-page]})
+#+END_SRC
+
+*** Services
+Each route is routed to a service.  We define those services with a
+single function which we define as follows:
+
+#+BEGIN_SRC clojure :noweb-ref services :results none :tangle src/project_catalog/services.clj
+  (ns project-catalog.services
+    (:require [io.pedestal.http :as http]
+              [io.pedestal.http.route :as route]
+              [io.pedestal.http.body-params :as body-params]
+              [ring.util.response :as ring-resp]))
+
+  (defn about-page
+    [request]
+    (ring-resp/response (format "Clojure %s - served from %s"
+                                (clojure-version)
+                                (route/url-for ::about-page))))
+
+  (defn home-page
+    [request]
+    (ring-resp/response "Hello World!"))
+
+  (def mock-project-collection {:sleeping-cat {:name "Sleeping Cat Project"
+                                               :framework "Pedastal"
+                                               :language "Clojure"
+                                               :repo "https://gitlab.com/srehorn/sleepingcat"}
+                                :stinkey-dog {:name "Stinky Dog Experiment"
+                                              :framework "Grails"
+                                              :language "Groovy"
+                                              :repo "https://gitlab.com/srehorn/stinkydog"}})
+
+  (defn get-projects
+    [request]
+    (http/json-response mock-project-collection))
+
+  (defn get-project
+    [request]
+    (let [projname (get-in request [:path-params :project-name])]
+      (http/json-response ((keyword projname) mock-project-collection))))
+
+  (defn add-project
+    [request]
+    (do
+      (prn (:json-params request))
+      (ring-resp/created "http://fake-201-url" "fake 201 in the body")))
+#+END_SRC
+
+#+RESULTS:
+
+*** Pedestal Service Definition
+Pedestal requires a definition of the service as a whole which
+includes everything that the server needs in order to start up a
+server with the required stuff.
+
+#+BEGIN_SRC clojure :noweb yes :noweb-ref pedestal-service :results none :tangle src/project_catalog/service.clj
+  (ns project-catalog.service
+    (:require [io.pedestal.http :as http]))
+
+  <<routes>>
+
+  (def service {:env :prod
+                ::http/routes routes
+                ::http/resource-path "/public"
+                ::http/type :jetty
+                ::http/port 8080
+                ::http/container-options {:h2c? true
+                                          :h2?  false
+                                          :ssl? false}})
+#+END_SRC
+
+*** Web Server
+The definition of the server itself is as follows.
+
+#+BEGIN_SRC clojure :noweb-ref server :results none :tangle src/project_catalog/server.clj
+  (ns project-catalog.server
+    (:require [io.pedestal.http        :as server]
+              [io.pedestal.http.route  :as route]
+              [project-catalog.service :as service]))
+
+  (defonce runnable-service (server/create-server service/service))
+
+  (defn run-dev
+    "Run the server persistently and in the background for development."
+    [& args]
+    (println "\nCreating your [DEV] server...")
+    (-> service/service
+        (merge {:env :dev
+                ::server/join? false
+                ::server/routes #(route/expand-routes (deref #'service/routes))
+                ::server/allowed-origins {:creds true :allowed-origins (constantly true)}})
+        server/default-interceptors
+        server/dev-interceptors
+        server/create-server
+        server/start))
+#+END_SRC
+
+#+RESULTS:
+** Testing the Service
+This section serves to list some simple requests which you can make to
+the service.
+
+*** Get Projects
+You can list all of the projects in the database with a get on
+=/Projects=.
+
+#+BEGIN_SRC http :pretty :results code
+  GET http://localhost:8080/projects
+#+END_SRC
+
+#+RESULTS:
+#+BEGIN_SRC http
+{
+  "sleeping-cat": {
+    "name": "Sleeping Cat Project",
+    "framework": "Pedastal",
+    "language": "Clojure",
+    "repo": "https://gitlab.com/srehorn/sleepingcat"
+  },
+  "stinkey-dog": {
+    "name": "Stinky Dog Experiment",
+    "framework": "Grails",
+    "language": "Groovy",
+    "repo": "https://gitlab.com/srehorn/stinkydog"
+  }
+}
+#+END_SRC
+
+*** Creating a Project
+The following will create a project with the name "staggering-echidna".
+
+#+BEGIN_SRC http :pretty :results code
+  POST http://localhost:8080/projects
+  Content-Type: application/json
+
+  {"staggering-echidna": 
+      {"name": "Staggering Echidna",
+       "framework": "Pedastal"
+       "language": "Clojure",
+       "repo": "http://gitlab.com/srehorn/staggering-echidna"}}
+#+END_SRC
+
+#+RESULTS:
+#+BEGIN_SRC http
+fake 201 in the body
+#+END_SRC
