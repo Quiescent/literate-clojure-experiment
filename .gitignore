@@ -37,4 +37,4 @@ out/
 build/
 
 # Tangled Source
-src/project/catalog/*.clj
+src/project_catalog/*.clj
