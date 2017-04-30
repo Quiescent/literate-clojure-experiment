@@ -16,6 +16,38 @@
 This is a literate program which demonstrates the power of using
 Emacs, org-mode and Emacs Lisp to create a Clojure microservice.
 
+** Project Local Setup
+This section specifies some tools which are useful to use with this
+project.
+
+The first of which is tangling and executing the current block so that
+you don't have to tangle the whole darn project each time.  All credit
+for local key bindings goes to phils from this [[http://stackoverflow.com/questions/21486934/file-specific-key-binding-in-emacs][Stack Overflow article]].
+Evaluate this block and then you'll be able to use =C-c C-v C-t= with
+the point in any block and update the REPLs current definitions from
+that block.
+
+#+BEGIN_SRC emacs-lisp :results none
+  (defun my-buffer-local-set-key (key command)
+    "Bind KEY to COMMAND in this buffer."
+    (let ((oldmap (current-local-map))
+          (newmap (make-sparse-keymap)))
+      (when oldmap
+        (set-keymap-parent newmap oldmap))
+      (define-key newmap key command)
+      (use-local-map newmap)))
+
+  (defun quiescent-tangle-and-load-current-block (point)
+    "Tangle and load the block at POINT into the current clojure session."
+    (interactive "d")
+    (let ((code (nth 5 (org-babel-tangle-single-block 0))))
+      (message (format "%s"
+                       (nrepl-sync-request:eval
+                        code (cider-current-connection) "project-catalog.service")))))
+
+  (my-buffer-local-set-key (kbd "C-c C-v C-t") #'quiescent-tangle-and-load-current-block)
+#+END_SRC
+
 ** Start NREPL
 This step requires that you have cider installed as well as Clojure
 mode.  It'll just run the same =jack-in= command as you usually would
@@ -33,41 +65,106 @@ sending commands to the REPL while it's going.
 #+BEGIN_SRC emacs-lisp :results none
   (call-interactively #'org-babel-tangle)
 
-  (cider-load-file "src/project_catalog/server.clj")
+  (cider-load-file "src/service.clj")
 
-  (nrepl-sync-request:eval "(project-catalog.server/run-dev)"
+  (nrepl-sync-request:eval "(project-catalog.service/run-dev)"
                            (cider-current-connection)
                            (cider-current-ns))
 #+END_SRC
 
-*** Routes
+** Tangle and Eval All
+This serves as a convenience to reload everything in the project by
+first tangling and then updating the environment.
+
+#+BEGIN_SRC emacs-lisp :results none
+  (call-interactively #'org-babel-tangle)
+
+  (mapc (lambda (file)
+          (cider-load-file file))
+        (directory-files "src/" t ".*\.clj$" t))
+#+END_SRC
+
+* Defining the Microservice
+The micro service has been broken down into components which appear in
+the order of greatest interest first.  The service itself is simply
+the composition of these components as follows:
+
+#+BEGIN_SRC clojure :noweb yes :results none :tangle src/service.clj
+  (ns project-catalog.service)
+
+  <<server>>
+#+END_SRC
+
+** Routes
 This section will cover the routes which we're defining in our
 service.
 
-Idea: pass the services and routes in from an org mode table!!!
+We have an =/about= which explains the purpose of the service, index
+which just posts the =project-catalog= in it's entirety, a projects URL
+which you can post to and get from for projects and creating a project
+respectively and a get for a particular project which accepts the
+project name in the URL.
 
-We have an =/about= which explains the purpose of the service,
+Important things to note here are that Pedestal can chain interceptors
+together, e.g. the =body-params= interceptor and the =add-project=
+interceptor.  The first parses parameters and the second handles the
+request (with parameters now parsed and useful).  A problem with
+adopting that approach is that Pedestal can't figure out the
+difference between the vector version and some of the other routes
+(could never figure out which) in that it can't generate a unique name
+for them.  What I ended up needing to do was add a =:route-name=
+keyword with a keyword name following it for that route.
 
-#+BEGIN_SRC clojure :noweb-ref routes :results none
-  (require '[project-catalog.services :as services])
+#+BEGIN_SRC clojure :noweb yes :noweb-ref routes :results none
+  <<token>>
+  <<services>>
 
-  (def routes #{["/"                       :get  `services/home-page]
-                ["/projects"               :post `services/add-project]
-                ["/projects"               :get  `services/get-projects]
-                ["/projects/:project-name" :get  `services/get-project]
-                ["/about"                  :get  `services/about-page]})
+  (require '[io.pedestal.http.body-params :as body-params])
+
+  (def routes #{["/"                       :get  [`token-check `home-page]]
+                ["/projects"               :post [`token-check (body-params/body-params) `add-project]
+                 :route-name :add-project]
+                ["/projects-xml"           :post [`token-check (body-params/body-params) `add-project-by-xml]
+                 :route-name :add-project-by-xml]
+                ["/projects"               :get  [`token-check `get-projects]]
+                ["/projects/:project-name" :get  [`token-check `get-project]]
+                ["/about"                  :get  [`token-check `about-page]]
+                ["/see-also"               :get  [`token-check `git-get]]})
 #+END_SRC
 
-*** Services
+** Getting Projects from Github
+We're going to use the HTTP client wrapper (a Clojure wrapper of the
+Java HTTP client library) to make the calls.
+
+#+BEGIN_SRC clojure :noweb-ref http-client
+  (require '[clj-http.client :as client]
+           '[clojure.data.json :as json])
+
+  (defn git-search
+    [q]
+    (let [ret (client/get (format "https://api.github.com/search/repositories?q=%s+language:clojure" q)
+                          {:debug false
+                           :content-type :json
+                           :accept :json})]
+      (json/read-str (ret :body))))
+#+END_SRC
+
+** Services
 Each route is routed to a service.  We define those services with a
 single function which we define as follows:
 
-#+BEGIN_SRC clojure :noweb-ref services :results none :tangle src/project_catalog/services.clj
-  (ns project-catalog.services
-    (:require [io.pedestal.http :as http]
-              [io.pedestal.http.route :as route]
-              [io.pedestal.http.body-params :as body-params]
-              [ring.util.response :as ring-resp]))
+#+BEGIN_SRC clojure :noweb yes :noweb-ref services :results none
+  <<get-project>>
+  <<http-client>>
+
+  (require '[io.pedestal.http :as http]
+           '[io.pedestal.http.route :as route]
+           '[ring.util.response :as ring-resp]
+           '[monger.core :as mg]
+           '[monger.credentials :as mcr]
+           '[monger.collection :as mc]
+           '[monger.json]
+           '[clojure.data.xml :as xml])
 
   (defn about-page
     [request]
@@ -77,7 +174,15 @@ single function which we define as follows:
 
   (defn home-page
     [request]
-    (ring-resp/response "Hello World!"))
+    (let [conn (mg/connect-with-credentials
+                "ds161580.mlab.com:61580"
+                (mcr/create "user"
+                            "bucket"
+                            "password"))
+          db (mg/get-db conn "bucket")]
+      (http/json-response
+       (mc/find-maps db
+                     "project-catalog"))))
 
   (def mock-project-collection {:sleeping-cat {:name "Sleeping Cat Project"
                                                :framework "Pedastal"
@@ -88,6 +193,12 @@ single function which we define as follows:
                                               :language "Groovy"
                                               :repo "https://gitlab.com/srehorn/stinkydog"}})
 
+  (defn git-get
+    [request]
+    (http/json-response
+     (git-search (get-in request [:query-params :q]))))
+
+
   (defn get-projects
     [request]
     (http/json-response mock-project-collection))
@@ -95,27 +206,64 @@ single function which we define as follows:
   (defn get-project
     [request]
     (let [projname (get-in request [:path-params :project-name])]
-      (http/json-response ((keyword projname) mock-project-collection))))
+      (http/json-response (db-get-project projname))))
 
   (defn add-project
     [request]
-    (do
-      (prn (:json-params request))
-      (ring-resp/created "http://fake-201-url" "fake 201 in the body")))
+    (let [incoming (:json-params request)
+          conn (mg/connect-with-credentials
+                "ds161580.mlab.com:61580"
+                (mcr/create "user"
+                            "bucket"
+                            "password"))
+          db (mg/get-db conn "bucket")]
+      (ring-resp/created "http://my-created-resource-url"
+                         (mc/insert-and-return db "project-catalog" incoming))))
+
+  <<xml>>
+
+  (defn add-project-by-xml
+    [request]
+    (let [incoming (:json-params request)
+          conn (mg/connect-with-credentials
+                "ds161580.mlab.com:61580"
+                (mcr/create "user"
+                            "bucket"
+                            "password"))
+          db (mg/get-db conn "bucket")]
+      (-> (ring-resp/created "http://my-created-resource-url"
+                             (xml/emit-str (project-to-xml-str (mc/insert-and-return db "project-catalog" incoming))))
+          (ring-resp/content-type "application/xml"))))
 #+END_SRC
 
-#+RESULTS:
+** Database Queries
+The first query which we need is one to get a project by it's name.
 
-*** Pedestal Service Definition
+#+BEGIN_SRC clojure :noweb-ref get-project
+  (require '[monger.core :as mg]
+           '[monger.credentials :as mcr]
+           '[monger.collection :as mc])
+
+  (defn db-get-project
+    [proj-name]
+    (let [conn (mg/connect-with-credentials
+                "ds161580.mlab.com:61580"
+                (mcr/create "user"
+                            "bucket"
+                            "password"))
+          db (mg/get-db conn "bucket")]
+      (mc/find-maps db "project-catalog" {:proj-name proj-name})))
+#+END_SRC
+
+** Pedestal Service Definition
 Pedestal requires a definition of the service as a whole which
 includes everything that the server needs in order to start up a
 server with the required stuff.
 
-#+BEGIN_SRC clojure :noweb yes :noweb-ref pedestal-service :results none :tangle src/project_catalog/service.clj
-  (ns project-catalog.service
-    (:require [io.pedestal.http :as http]))
-
+#+BEGIN_SRC clojure :noweb yes :noweb-ref pedestal-service :results none
   <<routes>>
+
+  (require '[io.pedestal.http :as http])
 
   (def service {:env :prod
                 ::http/routes routes
@@ -127,25 +275,25 @@ server with the required stuff.
                                           :ssl? false}})
 #+END_SRC
 
-*** Web Server
+** Web Server
 The definition of the server itself is as follows.
 
-#+BEGIN_SRC clojure :noweb-ref server :results none :tangle src/project_catalog/server.clj
-  (ns project-catalog.server
-    (:require [io.pedestal.http        :as server]
-              [io.pedestal.http.route  :as route]
-              [project-catalog.service :as service]))
+#+BEGIN_SRC clojure :noweb-ref server :results none
+  <<pedestal-service>>
 
-  (defonce runnable-service (server/create-server service/service))
+  (require '[io.pedestal.http       :as server]
+           '[io.pedestal.http.route :as route])
+
+  (defonce runnable-service (server/create-server service))
 
   (defn run-dev
     "Run the server persistently and in the background for development."
     [& args]
     (println "\nCreating your [DEV] server...")
-    (-> service/service
+    (-> service
         (merge {:env :dev
                 ::server/join? false
-                ::server/routes #(route/expand-routes (deref #'service/routes))
+                ::server/routes #(route/expand-routes (deref #'routes))
                 ::server/allowed-origins {:creds true :allowed-origins (constantly true)}})
         server/default-interceptors
         server/dev-interceptors
@@ -153,17 +301,128 @@ The definition of the server itself is as follows.
         server/start))
 #+END_SRC
 
-#+RESULTS:
-** Testing the Service
+** Keeping It Safe
+We need a form of defence against unwanted use of the micro service.
+For this we're simply going to check that every request made to the
+service contains a token in the headers which we're looking for.  If
+it has the token then we may continue, otherwise we ought to tell them
+that the action is not authorised.
+
+#+BEGIN_SRC clojure :noweb-ref token
+  (require '[io.pedestal.interceptor.helpers :as helpers]
+           '[ring.util.response :as ring-resp])
+
+  (helpers/defhandler token-check
+    [request]
+    (let [token (get-in request [:headers "x-catalog-token"])]
+      (if (not (= token "o brave new world"))
+        (assoc (ring-resp/response {:body "access denied"}) :status 403))))
+#+END_SRC
+
+** Post to a Token Service
+Sometimes we might want to call another service.  In this example
+we're going to pretend to be calling a token auth. service.  This is
+mostly for demonstration, but if you have a real service then you can
+quite easily see how it's done.
+
+This is the example given in the course which I was doing, but
+predictably along with everything else in the course it was out of
+date and didn't exist anymore.  It looked like a temporary thing
+anyway so I don't knew whether the instructor intended for his
+students to call the service.
+
+#+BEGIN_SRC clojure :noweb-ref authenticate :results none
+  (require '[clj-http.client :as client]
+           '[clojure.data.json :as json])
+
+  (defn auth0-token
+    []
+    (let [ret (client/post "https://jemez.auth0.com/oath/token"
+                           {:debug false
+                            :content-type :json
+                            :form-params {:client_id "AUTH_CLIENT_ID"
+                                          :client_secret "AUTH_SECRET"
+                                          :grant_type "client_credentials"}})]
+      (json/read-str (ret :body))))
+#+END_SRC
+
+He goes on to show an example of how you would call an authenticated
+API using the token you get from the above method.
+
+#+BEGIN_SRC clojure :results none
+  <<authenticate>>
+
+  (defn auth0-connections
+    [tok]
+    (let [ret (client/get "https://jemez.auth0.com/api/connections"
+                          {:debug false
+                           :content-type :json
+                           :accept :json
+                           :headers {"Authorization" (format "Bearer %s" tok)}})]
+      (ret :body)))
+#+END_SRC
+
+** Handling XML
+Rest doesn't mandate the serialisation standard to be used when
+communicating between the client and the server.  Even so JSON is by
+far the most popular and is often confused by those less experienced
+as being RESTFUL.  XML may also be used as a serialisation standard.
+
+Here we'll demo how that can be done.
+
+#+BEGIN_SRC clojure :noweb-ref xml :results none
+  (require '[clojure.data.xml :as xml])
+
+  (def raw-proj-string "<project>
+    <proj-name>olingquit</proj-name>
+    <name>The Important Olingquit Project</name>
+    <framework>Rails</framework>
+    <language>Ruby</language>
+    <repo>https://gitlab.com/srehorn/olingquit</repo>
+    </project>")
+
+  (def proj-xml (xml/parse-str raw-proj-string))
+
+  (defn get-by-tag
+    [proj-map tag]
+    (->> proj-map
+         :content
+         (filter #(= (:tag %) tag))
+         first
+         :content
+         first))
+
+  (defn xml-str-to-project
+    [xml-string]
+    (let [xml (xml/parse-str xml-string)]
+      {:proj-name (get-by-tag xml :proj-name)
+       :name      (get-by-tag xml :name)
+       :framework (get-by-tag xml :framework)
+       :language  (get-by-tag xml :language)
+       :repo      (get-by-tag xml :repo)}))
+
+  (defn project-to-xml-str
+    [project]
+    ((xml/element :project {}
+                  (xml/element :_id       {} (.toString (:_id       project)))
+                  (xml/element :proj-name {} (.toString (:proj-name project)))
+                  (xml/element :name      {} (.toString (:name      project)))
+                  (xml/element :framework {} (.toString (:framework project)))
+                  (xml/element :repo      {} (.toString (:repo      project)))
+                  (xml/element :language  {} (.toString (:language  project))))))
+#+END_SRC
+
+* Testing the Service
 This section serves to list some simple requests which you can make to
 the service.
 
-*** Get Projects
+** Get Projects
 You can list all of the projects in the database with a get on
 =/Projects=.
 
 #+BEGIN_SRC http :pretty :results code
   GET http://localhost:8080/projects
+  x-catalog-token: o brave new world
 #+END_SRC
 
 #+RESULTS:
@@ -184,21 +443,2976 @@ You can list all of the projects in the database with a get on
 }
 #+END_SRC
 
-*** Creating a Project
-The following will create a project with the name "staggering-echidna".
+** Get a Project By Name
+You can get any project by it's name.
+
+#+BEGIN_SRC http :pretty :results code
+  GET http://localhost:8080/projects/staggering-echidna
+  x-catalog-token: o brave new world
+#+END_SRC
+
+** Creating a Project
+The following will create a project with the name
+"staggering-echidna".  Initially I had a problem with this because I
+had removed the interceptor in the chain of interceptors for posting
+which actually parsed the body content.
 
 #+BEGIN_SRC http :pretty :results code
   POST http://localhost:8080/projects
   Content-Type: application/json
+  x-catalog-token: o brave new world
 
-  {"staggering-echidna": 
-      {"name": "Staggering Echidna",
-       "framework": "Pedastal"
-       "language": "Clojure",
-       "repo": "http://gitlab.com/srehorn/staggering-echidna"}}
+  {"name": "Staggering Echidna",
+   "framework": "Pedastal",
+   "language": "Clojure",
+   "repo": "http://gitlab.com/srehorn/staggering-echidna",
+   "proj-name": "staggering-echidna"}
 #+END_SRC
 
 #+RESULTS:
 #+BEGIN_SRC http
-fake 201 in the body
+{:_id #object[org.bson.types.ObjectId 0x4f49af65 "58f3a5072ecf106846cce3a1"], :name "Staggering Echidna", :framework "Pedastal", :language "Clojure", :repo "http://gitlab.com/srehorn/staggering-echidna", :proj-name "staggering-echidna"}
+#+END_SRC
+
+You can also create a project by XML.  Although this isn't working
+right now.
+
+#+BEGIN_SRC http :pretty :results code
+  POST http://localhost:8080/projects-xml
+  Content-Type: application/xml
+  x-catalog-token: o brave new world
+
+  <project>
+    <proj-name>olingquit</proj-name>
+    <name>The Important Olingquit Project</name>
+    <framework>Rails</framework>
+    <language>Ruby</language>
+    <repo>https://gitlab.com/srehorn/olingquit</repo>
+  </project>
+#+END_SRC
+
+#+RESULTS:
+#+BEGIN_SRC http
+Error processing request!
+Exception:
+
+clojure.lang.ExceptionInfo: Interceptor Exception: 
+ at clojure.core$ex_info.invokeStatic (core.clj:4617)
+    clojure.core$ex_info.invoke (core.clj:4617)
+    io.pedestal.interceptor.chain$throwable__GT_ex_info.invokeStatic (chain.clj:33)
+    io.pedestal.interceptor.chain$throwable__GT_ex_info.invoke (chain.clj:32)
+    io.pedestal.interceptor.chain$try_f.invokeStatic (chain.clj:55)
+    io.pedestal.interceptor.chain$try_f.invoke (chain.clj:42)
+    io.pedestal.interceptor.chain$process_all_with_binding.invokeStatic (chain.clj:169)
+    io.pedestal.interceptor.chain$process_all_with_binding.invoke (chain.clj:144)
+    io.pedestal.interceptor.chain$process_all$fn__22637.invoke (chain.clj:186)
+    clojure.lang.AFn.applyToHelper (AFn.java:152)
+    clojure.lang.AFn.applyTo (AFn.java:144)
+    clojure.core$apply.invokeStatic (core.clj:646)
+    clojure.core$with_bindings_STAR_.invokeStatic (core.clj:1881)
+    clojure.core$with_bindings_STAR_.doInvoke (core.clj:1881)
+    clojure.lang.RestFn.invoke (RestFn.java:425)
+    io.pedestal.interceptor.chain$process_all.invokeStatic (chain.clj:184)
+    io.pedestal.interceptor.chain$process_all.invoke (chain.clj:180)
+    io.pedestal.interceptor.chain$enter_all.invokeStatic (chain.clj:233)
+    io.pedestal.interceptor.chain$enter_all.invoke (chain.clj:227)
+    io.pedestal.interceptor.chain$execute.invokeStatic (chain.clj:377)
+    io.pedestal.interceptor.chain$execute.invoke (chain.clj:350)
+    io.pedestal.interceptor.chain$execute.invokeStatic (chain.clj:387)
+    io.pedestal.interceptor.chain$execute.invoke (chain.clj:350)
+    io.pedestal.http.impl.servlet_interceptor$interceptor_service_fn$fn__26291.invoke (servlet_interceptor.clj:350)
+    io.pedestal.http.servlet.FnServlet.service (servlet.clj:28)
+    org.eclipse.jetty.servlet.ServletHolder.handle (ServletHolder.java:838)
+    org.eclipse.jetty.servlet.ServletHandler.doHandle (ServletHandler.java:543)
+    org.eclipse.jetty.server.handler.ScopedHandler.nextHandle (ScopedHandler.java:188)
+    org.eclipse.jetty.server.handler.ContextHandler.doHandle (ContextHandler.java:1228)
+    org.eclipse.jetty.server.handler.ScopedHandler.nextScope (ScopedHandler.java:168)
+    org.eclipse.jetty.servlet.ServletHandler.doScope (ServletHandler.java:481)
+    org.eclipse.jetty.server.handler.ScopedHandler.nextScope (ScopedHandler.java:166)
+    org.eclipse.jetty.server.handler.ContextHandler.doScope (ContextHandler.java:1130)
+    org.eclipse.jetty.server.handler.ScopedHandler.handle (ScopedHandler.java:141)
+    org.eclipse.jetty.server.handler.HandlerWrapper.handle (HandlerWrapper.java:132)
+    org.eclipse.jetty.server.Server.handle (Server.java:564)
+    org.eclipse.jetty.server.HttpChannel.handle (HttpChannel.java:318)
+    org.eclipse.jetty.server.HttpConnection.onFillable (HttpConnection.java:251)
+    org.eclipse.jetty.io.AbstractConnection$ReadCallback.succeeded (AbstractConnection.java:279)
+    org.eclipse.jetty.io.FillInterest.fillable (FillInterest.java:112)
+    org.eclipse.jetty.io.ChannelEndPoint$2.run (ChannelEndPoint.java:124)
+    org.eclipse.jetty.util.thread.Invocable.invokePreferred (Invocable.java:122)
+    org.eclipse.jetty.util.thread.strategy.ExecutingExecutionStrategy.invoke (ExecutingExecutionStrategy.java:58)
+    org.eclipse.jetty.util.thread.strategy.ExecuteProduceConsume.produceConsume (ExecuteProduceConsume.java:201)
+    org.eclipse.jetty.util.thread.strategy.ExecuteProduceConsume.run (ExecuteProduceConsume.java:133)
+    org.eclipse.jetty.util.thread.QueuedThreadPool.runJob (QueuedThreadPool.java:672)
+    org.eclipse.jetty.util.thread.QueuedThreadPool$2.run (QueuedThreadPool.java:590)
+    java.lang.Thread.run (Thread.java:745)
+Caused by: java.lang.NullPointerException: null
+ at clojure.lang.Reflector.invokeNoArgInstanceMember (Reflector.java:301)
+    project_catalog.service$project_to_xml_str.invokeStatic (form-init1647099764997980408.clj:130)
+    project_catalog.service$project_to_xml_str.invoke (form-init1647099764997980408.clj:126)
+    project_catalog.service$add_project_by_xml.invokeStatic (form-init1647099764997980408.clj:146)
+    project_catalog.service$add_project_by_xml.invoke (form-init1647099764997980408.clj:136)
+    io.pedestal.interceptor$eval15369$fn__15370$fn__15371.invoke (interceptor.clj:41)
+    io.pedestal.interceptor.chain$try_f.invokeStatic (chain.clj:52)
+    io.pedestal.interceptor.chain$try_f.invoke (chain.clj:42)
+    io.pedestal.interceptor.chain$process_all_with_binding.invokeStatic (chain.clj:169)
+    io.pedestal.interceptor.chain$process_all_with_binding.invoke (chain.clj:144)
+    io.pedestal.interceptor.chain$process_all$fn__22637.invoke (chain.clj:186)
+    clojure.lang.AFn.applyToHelper (AFn.java:152)
+    clojure.lang.AFn.applyTo (AFn.java:144)
+    clojure.core$apply.invokeStatic (core.clj:646)
+    clojure.core$with_bindings_STAR_.invokeStatic (core.clj:1881)
+    clojure.core$with_bindings_STAR_.doInvoke (core.clj:1881)
+    clojure.lang.RestFn.invoke (RestFn.java:425)
+    io.pedestal.interceptor.chain$process_all.invokeStatic (chain.clj:184)
+    io.pedestal.interceptor.chain$process_all.invoke (chain.clj:180)
+    io.pedestal.interceptor.chain$enter_all.invokeStatic (chain.clj:233)
+    io.pedestal.interceptor.chain$enter_all.invoke (chain.clj:227)
+    io.pedestal.interceptor.chain$execute.invokeStatic (chain.clj:377)
+    io.pedestal.interceptor.chain$execute.invoke (chain.clj:350)
+    io.pedestal.interceptor.chain$execute.invokeStatic (chain.clj:387)
+    io.pedestal.interceptor.chain$execute.invoke (chain.clj:350)
+    io.pedestal.http.impl.servlet_interceptor$interceptor_service_fn$fn__26291.invoke (servlet_interceptor.clj:350)
+    io.pedestal.http.servlet.FnServlet.service (servlet.clj:28)
+    org.eclipse.jetty.servlet.ServletHolder.handle (ServletHolder.java:838)
+    org.eclipse.jetty.servlet.ServletHandler.doHandle (ServletHandler.java:543)
+    org.eclipse.jetty.server.handler.ScopedHandler.nextHandle (ScopedHandler.java:188)
+    org.eclipse.jetty.server.handler.ContextHandler.doHandle (ContextHandler.java:1228)
+    org.eclipse.jetty.server.handler.ScopedHandler.nextScope (ScopedHandler.java:168)
+    org.eclipse.jetty.servlet.ServletHandler.doScope (ServletHandler.java:481)
+    org.eclipse.jetty.server.handler.ScopedHandler.nextScope (ScopedHandler.java:166)
+    org.eclipse.jetty.server.handler.ContextHandler.doScope (ContextHandler.java:1130)
+    org.eclipse.jetty.server.handler.ScopedHandler.handle (ScopedHandler.java:141)
+    org.eclipse.jetty.server.handler.HandlerWrapper.handle (HandlerWrapper.java:132)
+    org.eclipse.jetty.server.Server.handle (Server.java:564)
+    org.eclipse.jetty.server.HttpChannel.handle (HttpChannel.java:318)
+    org.eclipse.jetty.server.HttpConnection.onFillable (HttpConnection.java:251)
+    org.eclipse.jetty.io.AbstractConnection$ReadCallback.succeeded (AbstractConnection.java:279)
+    org.eclipse.jetty.io.FillInterest.fillable (FillInterest.java:112)
+    org.eclipse.jetty.io.ChannelEndPoint$2.run (ChannelEndPoint.java:124)
+    org.eclipse.jetty.util.thread.Invocable.invokePreferred (Invocable.java:122)
+    org.eclipse.jetty.util.thread.strategy.ExecutingExecutionStrategy.invoke (ExecutingExecutionStrategy.java:58)
+    org.eclipse.jetty.util.thread.strategy.ExecuteProduceConsume.produceConsume (ExecuteProduceConsume.java:201)
+    org.eclipse.jetty.util.thread.strategy.ExecuteProduceConsume.run (ExecuteProduceConsume.java:133)
+    org.eclipse.jetty.util.thread.QueuedThreadPool.runJob (QueuedThreadPool.java:672)
+    org.eclipse.jetty.util.thread.QueuedThreadPool$2.run (QueuedThreadPool.java:590)
+    java.lang.Thread.run (Thread.java:745)
+
+Context:
+
+{:response nil,
+ :cors-headers
+ {"Access-Control-Allow-Origin" "",
+  "Access-Control-Allow-Credentials" "true"},
+ :io.pedestal.interceptor.chain/stack
+ ({:name :io.pedestal.http.impl.servlet-interceptor/ring-response,
+   :enter nil,
+   :leave
+   #function[io.pedestal.http.impl.servlet-interceptor/leave-ring-response],
+   :error
+   #function[io.pedestal.http.impl.servlet-interceptor/error-ring-response]}
+  {:name :io.pedestal.http.impl.servlet-interceptor/stylobate,
+   :enter
+   #function[io.pedestal.http.impl.servlet-interceptor/enter-stylobate],
+   :leave
+   #function[io.pedestal.http.impl.servlet-interceptor/leave-stylobate],
+   :error
+   #function[io.pedestal.http.impl.servlet-interceptor/error-stylobate]}
+  {:name
+   :io.pedestal.http.impl.servlet-interceptor/terminator-injector,
+   :enter #function[io.pedestal.interceptor.helpers/before/fn--22828],
+   :leave nil,
+   :error nil}),
+ :request
+ {:protocol "HTTP/1.1",
+  :async-supported? true,
+  :remote-addr "127.0.0.1",
+  :servlet-response
+  #object[org.eclipse.jetty.server.Response 0x6f6060ab "HTTP/1.1 200 \nDate: Tue, 18 Apr 2017 18:39:05 GMT\r\n\r\n"],
+  :servlet
+  #object[io.pedestal.http.servlet.FnServlet 0x434f50ff "io.pedestal.http.servlet.FnServlet@434f50ff"],
+  :headers
+  {"user-agent" "curl/7.49.1",
+   "host" "localhost:8080",
+   "x-catalog-token" "o brave new world",
+   "accept" "*/*",
+   "content-length" "207",
+   "content-type" "application/xml",
+   "origin" ""},
+  :server-port 8080,
+  :servlet-request
+  #object[org.eclipse.jetty.server.Request 0x2d6d8aa6 "Request(POST //localhost:8080/projects-xml)@2d6d8aa6"],
+  :content-length 207,
+  :content-type "application/xml",
+  :path-info "/projects-xml",
+  :url-for #function[io.pedestal.http.route/url-for-routes/fn--23560],
+  :uri "/projects-xml",
+  :server-name "localhost",
+  :query-string nil,
+  :path-params {},
+  :body
+  #object[org.eclipse.jetty.server.HttpInputOverHTTP 0x6318359b "HttpInputOverHTTP@6318359b[c=0,q=0,[0]=null,s=STREAM]"],
+  :scheme :http,
+  :request-method :post},
+ :bindings
+ {#'io.pedestal.http.route/*url-for*
+  #function[io.pedestal.http.route/url-for-routes/fn--23560]},
+ :enter-async
+ [#function[io.pedestal.http.impl.servlet-interceptor/start-servlet-async]],
+ :io.pedestal.interceptor.chain/terminators
+ (#function[io.pedestal.http.impl.servlet-interceptor/terminator-inject/fn--26266]),
+ :servlet-response
+ #object[org.eclipse.jetty.server.Response 0x6f6060ab "HTTP/1.1 200 \nDate: Tue, 18 Apr 2017 18:39:05 GMT\r\n\r\n"],
+ :route
+ {:path "/projects-xml",
+  :method :post,
+  :path-re #"/\Qprojects-xml\E",
+  :path-parts ["projects-xml"],
+  :interceptors
+  [{:name :project-catalog.service/token-check,
+    :enter #function[io.pedestal.interceptor.helpers/before/fn--22828],
+    :leave nil,
+    :error nil}
+   {:name :io.pedestal.http.body-params/body-params,
+    :enter
+    #function[io.pedestal.interceptor.helpers/on-request/fn--22870],
+    :leave nil,
+    :error nil}
+   {:name nil,
+    :enter
+    #function[io.pedestal.interceptor/eval15369/fn--15370/fn--15371],
+    :leave nil,
+    :error nil}],
+  :route-name :add-project-by-xml,
+  :path-params {},
+  :io.pedestal.http.route.prefix-tree/satisfies-constraints?
+  #function[clojure.core/constantly/fn--4614]},
+ :servlet
+ #object[io.pedestal.http.servlet.FnServlet 0x434f50ff "io.pedestal.http.servlet.FnServlet@434f50ff"],
+ :servlet-request
+ #object[org.eclipse.jetty.server.Request 0x2d6d8aa6 "Request(POST //localhost:8080/projects-xml)@2d6d8aa6"],
+ :url-for #function[io.pedestal.http.route/url-for-routes/fn--23560],
+ :io.pedestal.interceptor.chain/execution-id 5,
+ :servlet-config
+ #object[org.eclipse.jetty.servlet.ServletHolder$Config 0x2c804d4f "org.eclipse.jetty.servlet.ServletHolder$Config@2c804d4f"],
+ :async?
+ #function[io.pedestal.http.impl.servlet-interceptor/servlet-async?]}
+#+END_SRC
+
+** Searching Github
+You can also get additional details on similar projects with the
+see-also API method.
+
+#+BEGIN_SRC http :pretty :results code
+  GET http://localhost:8080/see-also?q=sequence
+  x-catalog-token: o brave new world  
+#+END_SRC
+
+#+RESULTS:
+#+BEGIN_SRC http
+{
+  "total_count": 106,
+  "incomplete_results": false,
+  "items": [
+    {
+      "git_commits_url": "https://api.github.com/repos/jclaggett/seqex/git/commits{/sha}",
+      "pushed_at": "2015-12-01T16:03:17Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/jclaggett/received_events",
+        "url": "https://api.github.com/users/jclaggett",
+        "followers_url": "https://api.github.com/users/jclaggett/followers",
+        "avatar_url": "https://avatars0.githubusercontent.com/u/100909?v=3",
+        "subscriptions_url": "https://api.github.com/users/jclaggett/subscriptions",
+        "site_admin": false,
+        "id": 100909,
+        "organizations_url": "https://api.github.com/users/jclaggett/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/jclaggett",
+        "starred_url": "https://api.github.com/users/jclaggett/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/jclaggett/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/jclaggett/repos",
+        "events_url": "https://api.github.com/users/jclaggett/events{/privacy}",
+        "login": "jclaggett",
+        "gists_url": "https://api.github.com/users/jclaggett/gists{/gist_id}"
+      },
+      "score": 15.368045,
+      "url": "https://api.github.com/repos/jclaggett/seqex",
+      "contributors_url": "https://api.github.com/repos/jclaggett/seqex/contributors",
+      "trees_url": "https://api.github.com/repos/jclaggett/seqex/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/jclaggett/seqex/deployments",
+      "full_name": "jclaggett/seqex",
+      "milestones_url": "https://api.github.com/repos/jclaggett/seqex/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/jclaggett/seqex/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/jclaggett/seqex/tags",
+      "blobs_url": "https://api.github.com/repos/jclaggett/seqex/git/blobs{/sha}",
+      "stargazers_count": 132,
+      "ssh_url": "git@github.com:jclaggett/seqex.git",
+      "forks": 6,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/jclaggett/seqex/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/jclaggett/seqex/keys{/key_id}",
+      "id": 7474222,
+      "homepage": null,
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/jclaggett/seqex/subscription",
+      "notifications_url": "https://api.github.com/repos/jclaggett/seqex/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/jclaggett/seqex/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/jclaggett/seqex/contents/{+path}",
+      "watchers": 132,
+      "name": "seqex",
+      "compare_url": "https://api.github.com/repos/jclaggett/seqex/compare/{base}...{head}",
+      "open_issues": 3,
+      "stargazers_url": "https://api.github.com/repos/jclaggett/seqex/stargazers",
+      "has_issues": true,
+      "updated_at": "2017-03-12T05:04:30Z",
+      "git_url": "git://github.com/jclaggett/seqex.git",
+      "assignees_url": "https://api.github.com/repos/jclaggett/seqex/assignees{/user}",
+      "open_issues_count": 3,
+      "commits_url": "https://api.github.com/repos/jclaggett/seqex/commits{/sha}",
+      "html_url": "https://github.com/jclaggett/seqex",
+      "labels_url": "https://api.github.com/repos/jclaggett/seqex/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/jclaggett/seqex/git/refs{/sha}",
+      "forks_count": 6,
+      "issue_events_url": "https://api.github.com/repos/jclaggett/seqex/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/jclaggett/seqex/languages",
+      "downloads_url": "https://api.github.com/repos/jclaggett/seqex/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/jclaggett/seqex/comments{/number}",
+      "archive_url": "https://api.github.com/repos/jclaggett/seqex/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/jclaggett/seqex/events",
+      "watchers_count": 132,
+      "hooks_url": "https://api.github.com/repos/jclaggett/seqex/hooks",
+      "created_at": "2013-01-06T23:41:57Z",
+      "teams_url": "https://api.github.com/repos/jclaggett/seqex/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 3244,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/jclaggett/seqex/subscribers",
+      "releases_url": "https://api.github.com/repos/jclaggett/seqex/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/jclaggett/seqex/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/jclaggett/seqex/statuses/{sha}",
+      "clone_url": "https://github.com/jclaggett/seqex.git",
+      "forks_url": "https://api.github.com/repos/jclaggett/seqex/forks",
+      "issues_url": "https://api.github.com/repos/jclaggett/seqex/issues{/number}",
+      "description": "Sequence Expressions",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/jclaggett/seqex/merges",
+      "git_tags_url": "https://api.github.com/repos/jclaggett/seqex/git/tags{/sha}",
+      "svn_url": "https://github.com/jclaggett/seqex"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/brentonashworth/clj-diff/git/commits{/sha}",
+      "pushed_at": "2015-06-28T03:51:10Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/brentonashworth/received_events",
+        "url": "https://api.github.com/users/brentonashworth",
+        "followers_url": "https://api.github.com/users/brentonashworth/followers",
+        "avatar_url": "https://avatars2.githubusercontent.com/u/161217?v=3",
+        "subscriptions_url": "https://api.github.com/users/brentonashworth/subscriptions",
+        "site_admin": false,
+        "id": 161217,
+        "organizations_url": "https://api.github.com/users/brentonashworth/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/brentonashworth",
+        "starred_url": "https://api.github.com/users/brentonashworth/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/brentonashworth/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/brentonashworth/repos",
+        "events_url": "https://api.github.com/users/brentonashworth/events{/privacy}",
+        "login": "brentonashworth",
+        "gists_url": "https://api.github.com/users/brentonashworth/gists{/gist_id}"
+      },
+      "score": 12.953842,
+      "url": "https://api.github.com/repos/brentonashworth/clj-diff",
+      "contributors_url": "https://api.github.com/repos/brentonashworth/clj-diff/contributors",
+      "trees_url": "https://api.github.com/repos/brentonashworth/clj-diff/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/brentonashworth/clj-diff/deployments",
+      "full_name": "brentonashworth/clj-diff",
+      "milestones_url": "https://api.github.com/repos/brentonashworth/clj-diff/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/brentonashworth/clj-diff/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/brentonashworth/clj-diff/tags",
+      "blobs_url": "https://api.github.com/repos/brentonashworth/clj-diff/git/blobs{/sha}",
+      "stargazers_count": 92,
+      "ssh_url": "git@github.com:brentonashworth/clj-diff.git",
+      "forks": 9,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/brentonashworth/clj-diff/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/brentonashworth/clj-diff/keys{/key_id}",
+      "id": 1045663,
+      "homepage": "",
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/brentonashworth/clj-diff/subscription",
+      "notifications_url": "https://api.github.com/repos/brentonashworth/clj-diff/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/brentonashworth/clj-diff/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/brentonashworth/clj-diff/contents/{+path}",
+      "watchers": 92,
+      "name": "clj-diff",
+      "compare_url": "https://api.github.com/repos/brentonashworth/clj-diff/compare/{base}...{head}",
+      "open_issues": 5,
+      "stargazers_url": "https://api.github.com/repos/brentonashworth/clj-diff/stargazers",
+      "has_issues": true,
+      "updated_at": "2017-03-28T20:48:35Z",
+      "git_url": "git://github.com/brentonashworth/clj-diff.git",
+      "assignees_url": "https://api.github.com/repos/brentonashworth/clj-diff/assignees{/user}",
+      "open_issues_count": 5,
+      "commits_url": "https://api.github.com/repos/brentonashworth/clj-diff/commits{/sha}",
+      "html_url": "https://github.com/brentonashworth/clj-diff",
+      "labels_url": "https://api.github.com/repos/brentonashworth/clj-diff/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/brentonashworth/clj-diff/git/refs{/sha}",
+      "forks_count": 9,
+      "issue_events_url": "https://api.github.com/repos/brentonashworth/clj-diff/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/brentonashworth/clj-diff/languages",
+      "downloads_url": "https://api.github.com/repos/brentonashworth/clj-diff/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/brentonashworth/clj-diff/comments{/number}",
+      "archive_url": "https://api.github.com/repos/brentonashworth/clj-diff/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/brentonashworth/clj-diff/events",
+      "watchers_count": 92,
+      "hooks_url": "https://api.github.com/repos/brentonashworth/clj-diff/hooks",
+      "created_at": "2010-11-02T19:05:36Z",
+      "teams_url": "https://api.github.com/repos/brentonashworth/clj-diff/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 771,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/brentonashworth/clj-diff/subscribers",
+      "releases_url": "https://api.github.com/repos/brentonashworth/clj-diff/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/brentonashworth/clj-diff/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/brentonashworth/clj-diff/statuses/{sha}",
+      "clone_url": "https://github.com/brentonashworth/clj-diff.git",
+      "forks_url": "https://api.github.com/repos/brentonashworth/clj-diff/forks",
+      "issues_url": "https://api.github.com/repos/brentonashworth/clj-diff/issues{/number}",
+      "description": "Diff for Clojure Sequences",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/brentonashworth/clj-diff/merges",
+      "git_tags_url": "https://api.github.com/repos/brentonashworth/clj-diff/git/tags{/sha}",
+      "svn_url": "https://github.com/brentonashworth/clj-diff"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/cgrand/seqexp/git/commits{/sha}",
+      "pushed_at": "2017-01-18T12:35:57Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/cgrand/received_events",
+        "url": "https://api.github.com/users/cgrand",
+        "followers_url": "https://api.github.com/users/cgrand/followers",
+        "avatar_url": "https://avatars3.githubusercontent.com/u/47025?v=3",
+        "subscriptions_url": "https://api.github.com/users/cgrand/subscriptions",
+        "site_admin": false,
+        "id": 47025,
+        "organizations_url": "https://api.github.com/users/cgrand/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/cgrand",
+        "starred_url": "https://api.github.com/users/cgrand/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/cgrand/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/cgrand/repos",
+        "events_url": "https://api.github.com/users/cgrand/events{/privacy}",
+        "login": "cgrand",
+        "gists_url": "https://api.github.com/users/cgrand/gists{/gist_id}"
+      },
+      "score": 11.89509,
+      "url": "https://api.github.com/repos/cgrand/seqexp",
+      "contributors_url": "https://api.github.com/repos/cgrand/seqexp/contributors",
+      "trees_url": "https://api.github.com/repos/cgrand/seqexp/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/cgrand/seqexp/deployments",
+      "full_name": "cgrand/seqexp",
+      "milestones_url": "https://api.github.com/repos/cgrand/seqexp/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/cgrand/seqexp/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/cgrand/seqexp/tags",
+      "blobs_url": "https://api.github.com/repos/cgrand/seqexp/git/blobs{/sha}",
+      "stargazers_count": 157,
+      "ssh_url": "git@github.com:cgrand/seqexp.git",
+      "forks": 5,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/cgrand/seqexp/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/cgrand/seqexp/keys{/key_id}",
+      "id": 20996148,
+      "homepage": null,
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/cgrand/seqexp/subscription",
+      "notifications_url": "https://api.github.com/repos/cgrand/seqexp/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/cgrand/seqexp/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/cgrand/seqexp/contents/{+path}",
+      "watchers": 157,
+      "name": "seqexp",
+      "compare_url": "https://api.github.com/repos/cgrand/seqexp/compare/{base}...{head}",
+      "open_issues": 3,
+      "stargazers_url": "https://api.github.com/repos/cgrand/seqexp/stargazers",
+      "has_issues": true,
+      "updated_at": "2017-04-14T11:51:23Z",
+      "git_url": "git://github.com/cgrand/seqexp.git",
+      "assignees_url": "https://api.github.com/repos/cgrand/seqexp/assignees{/user}",
+      "open_issues_count": 3,
+      "commits_url": "https://api.github.com/repos/cgrand/seqexp/commits{/sha}",
+      "html_url": "https://github.com/cgrand/seqexp",
+      "labels_url": "https://api.github.com/repos/cgrand/seqexp/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/cgrand/seqexp/git/refs{/sha}",
+      "forks_count": 5,
+      "issue_events_url": "https://api.github.com/repos/cgrand/seqexp/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/cgrand/seqexp/languages",
+      "downloads_url": "https://api.github.com/repos/cgrand/seqexp/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/cgrand/seqexp/comments{/number}",
+      "archive_url": "https://api.github.com/repos/cgrand/seqexp/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/cgrand/seqexp/events",
+      "watchers_count": 157,
+      "hooks_url": "https://api.github.com/repos/cgrand/seqexp/hooks",
+      "created_at": "2014-06-19T10:10:14Z",
+      "teams_url": "https://api.github.com/repos/cgrand/seqexp/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 51,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/cgrand/seqexp/subscribers",
+      "releases_url": "https://api.github.com/repos/cgrand/seqexp/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/cgrand/seqexp/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/cgrand/seqexp/statuses/{sha}",
+      "clone_url": "https://github.com/cgrand/seqexp.git",
+      "forks_url": "https://api.github.com/repos/cgrand/seqexp/forks",
+      "issues_url": "https://api.github.com/repos/cgrand/seqexp/issues{/number}",
+      "description": "Regexp for sequences!",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/cgrand/seqexp/merges",
+      "git_tags_url": "https://api.github.com/repos/cgrand/seqexp/git/tags{/sha}",
+      "svn_url": "https://github.com/cgrand/seqexp"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/krl/bliss/git/commits{/sha}",
+      "pushed_at": "2012-05-25T20:38:22Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/krl/received_events",
+        "url": "https://api.github.com/users/krl",
+        "followers_url": "https://api.github.com/users/krl/followers",
+        "avatar_url": "https://avatars1.githubusercontent.com/u/59379?v=3",
+        "subscriptions_url": "https://api.github.com/users/krl/subscriptions",
+        "site_admin": false,
+        "id": 59379,
+        "organizations_url": "https://api.github.com/users/krl/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/krl",
+        "starred_url": "https://api.github.com/users/krl/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/krl/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/krl/repos",
+        "events_url": "https://api.github.com/users/krl/events{/privacy}",
+        "login": "krl",
+        "gists_url": "https://api.github.com/users/krl/gists{/gist_id}"
+      },
+      "score": 8.69798,
+      "url": "https://api.github.com/repos/krl/bliss",
+      "contributors_url": "https://api.github.com/repos/krl/bliss/contributors",
+      "trees_url": "https://api.github.com/repos/krl/bliss/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/krl/bliss/deployments",
+      "full_name": "krl/bliss",
+      "milestones_url": "https://api.github.com/repos/krl/bliss/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/krl/bliss/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/krl/bliss/tags",
+      "blobs_url": "https://api.github.com/repos/krl/bliss/git/blobs{/sha}",
+      "stargazers_count": 12,
+      "ssh_url": "git@github.com:krl/bliss.git",
+      "forks": 2,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/krl/bliss/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/krl/bliss/keys{/key_id}",
+      "id": 2948563,
+      "homepage": "",
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/krl/bliss/subscription",
+      "notifications_url": "https://api.github.com/repos/krl/bliss/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/krl/bliss/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/krl/bliss/contents/{+path}",
+      "watchers": 12,
+      "name": "bliss",
+      "compare_url": "https://api.github.com/repos/krl/bliss/compare/{base}...{head}",
+      "open_issues": 0,
+      "stargazers_url": "https://api.github.com/repos/krl/bliss/stargazers",
+      "has_issues": true,
+      "updated_at": "2014-06-15T00:43:44Z",
+      "git_url": "git://github.com/krl/bliss.git",
+      "assignees_url": "https://api.github.com/repos/krl/bliss/assignees{/user}",
+      "open_issues_count": 0,
+      "commits_url": "https://api.github.com/repos/krl/bliss/commits{/sha}",
+      "html_url": "https://github.com/krl/bliss",
+      "labels_url": "https://api.github.com/repos/krl/bliss/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/krl/bliss/git/refs{/sha}",
+      "forks_count": 2,
+      "issue_events_url": "https://api.github.com/repos/krl/bliss/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/krl/bliss/languages",
+      "downloads_url": "https://api.github.com/repos/krl/bliss/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/krl/bliss/comments{/number}",
+      "archive_url": "https://api.github.com/repos/krl/bliss/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/krl/bliss/events",
+      "watchers_count": 12,
+      "hooks_url": "https://api.github.com/repos/krl/bliss/hooks",
+      "created_at": "2011-12-09T16:45:46Z",
+      "teams_url": "https://api.github.com/repos/krl/bliss/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 227,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/krl/bliss/subscribers",
+      "releases_url": "https://api.github.com/repos/krl/bliss/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/krl/bliss/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/krl/bliss/statuses/{sha}",
+      "clone_url": "https://github.com/krl/bliss.git",
+      "forks_url": "https://api.github.com/repos/krl/bliss/forks",
+      "issues_url": "https://api.github.com/repos/krl/bliss/issues{/number}",
+      "description": "functional sequencer",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/krl/bliss/merges",
+      "git_tags_url": "https://api.github.com/repos/krl/bliss/git/tags{/sha}",
+      "svn_url": "https://github.com/krl/bliss"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/sattvik/liberator-transit/git/commits{/sha}",
+      "pushed_at": "2016-10-09T03:05:23Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/sattvik/received_events",
+        "url": "https://api.github.com/users/sattvik",
+        "followers_url": "https://api.github.com/users/sattvik/followers",
+        "avatar_url": "https://avatars3.githubusercontent.com/u/152491?v=3",
+        "subscriptions_url": "https://api.github.com/users/sattvik/subscriptions",
+        "site_admin": false,
+        "id": 152491,
+        "organizations_url": "https://api.github.com/users/sattvik/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/sattvik",
+        "starred_url": "https://api.github.com/users/sattvik/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/sattvik/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/sattvik/repos",
+        "events_url": "https://api.github.com/users/sattvik/events{/privacy}",
+        "login": "sattvik",
+        "gists_url": "https://api.github.com/users/sattvik/gists{/gist_id}"
+      },
+      "score": 6.06456,
+      "url": "https://api.github.com/repos/sattvik/liberator-transit",
+      "contributors_url": "https://api.github.com/repos/sattvik/liberator-transit/contributors",
+      "trees_url": "https://api.github.com/repos/sattvik/liberator-transit/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/sattvik/liberator-transit/deployments",
+      "full_name": "sattvik/liberator-transit",
+      "milestones_url": "https://api.github.com/repos/sattvik/liberator-transit/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/sattvik/liberator-transit/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/sattvik/liberator-transit/tags",
+      "blobs_url": "https://api.github.com/repos/sattvik/liberator-transit/git/blobs{/sha}",
+      "stargazers_count": 26,
+      "ssh_url": "git@github.com:sattvik/liberator-transit.git",
+      "forks": 12,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/sattvik/liberator-transit/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/sattvik/liberator-transit/keys{/key_id}",
+      "id": 22777236,
+      "homepage": null,
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/sattvik/liberator-transit/subscription",
+      "notifications_url": "https://api.github.com/repos/sattvik/liberator-transit/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/sattvik/liberator-transit/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/sattvik/liberator-transit/contents/{+path}",
+      "watchers": 26,
+      "name": "liberator-transit",
+      "compare_url": "https://api.github.com/repos/sattvik/liberator-transit/compare/{base}...{head}",
+      "open_issues": 0,
+      "stargazers_url": "https://api.github.com/repos/sattvik/liberator-transit/stargazers",
+      "has_issues": true,
+      "updated_at": "2017-02-15T16:03:37Z",
+      "git_url": "git://github.com/sattvik/liberator-transit.git",
+      "assignees_url": "https://api.github.com/repos/sattvik/liberator-transit/assignees{/user}",
+      "open_issues_count": 0,
+      "commits_url": "https://api.github.com/repos/sattvik/liberator-transit/commits{/sha}",
+      "html_url": "https://github.com/sattvik/liberator-transit",
+      "labels_url": "https://api.github.com/repos/sattvik/liberator-transit/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/sattvik/liberator-transit/git/refs{/sha}",
+      "forks_count": 12,
+      "issue_events_url": "https://api.github.com/repos/sattvik/liberator-transit/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/sattvik/liberator-transit/languages",
+      "downloads_url": "https://api.github.com/repos/sattvik/liberator-transit/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/sattvik/liberator-transit/comments{/number}",
+      "archive_url": "https://api.github.com/repos/sattvik/liberator-transit/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/sattvik/liberator-transit/events",
+      "watchers_count": 26,
+      "hooks_url": "https://api.github.com/repos/sattvik/liberator-transit/hooks",
+      "created_at": "2014-08-09T02:45:10Z",
+      "teams_url": "https://api.github.com/repos/sattvik/liberator-transit/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 49,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/sattvik/liberator-transit/subscribers",
+      "releases_url": "https://api.github.com/repos/sattvik/liberator-transit/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/sattvik/liberator-transit/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/sattvik/liberator-transit/statuses/{sha}",
+      "clone_url": "https://github.com/sattvik/liberator-transit.git",
+      "forks_url": "https://api.github.com/repos/sattvik/liberator-transit/forks",
+      "issues_url": "https://api.github.com/repos/sattvik/liberator-transit/issues{/number}",
+      "description": "Adds support to Liberator for encoding sequences and maps into Transit.",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/sattvik/liberator-transit/merges",
+      "git_tags_url": "https://api.github.com/repos/sattvik/liberator-transit/git/tags{/sha}",
+      "svn_url": "https://github.com/sattvik/liberator-transit"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/rplevy/lambic/git/commits{/sha}",
+      "pushed_at": "2012-06-16T00:15:41Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/rplevy/received_events",
+        "url": "https://api.github.com/users/rplevy",
+        "followers_url": "https://api.github.com/users/rplevy/followers",
+        "avatar_url": "https://avatars0.githubusercontent.com/u/358062?v=3",
+        "subscriptions_url": "https://api.github.com/users/rplevy/subscriptions",
+        "site_admin": false,
+        "id": 358062,
+        "organizations_url": "https://api.github.com/users/rplevy/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/rplevy",
+        "starred_url": "https://api.github.com/users/rplevy/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/rplevy/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/rplevy/repos",
+        "events_url": "https://api.github.com/users/rplevy/events{/privacy}",
+        "login": "rplevy",
+        "gists_url": "https://api.github.com/users/rplevy/gists{/gist_id}"
+      },
+      "score": 6.00149,
+      "url": "https://api.github.com/repos/rplevy/lambic",
+      "contributors_url": "https://api.github.com/repos/rplevy/lambic/contributors",
+      "trees_url": "https://api.github.com/repos/rplevy/lambic/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/rplevy/lambic/deployments",
+      "full_name": "rplevy/lambic",
+      "milestones_url": "https://api.github.com/repos/rplevy/lambic/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/rplevy/lambic/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/rplevy/lambic/tags",
+      "blobs_url": "https://api.github.com/repos/rplevy/lambic/git/blobs{/sha}",
+      "stargazers_count": 25,
+      "ssh_url": "git@github.com:rplevy/lambic.git",
+      "forks": 0,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/rplevy/lambic/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/rplevy/lambic/keys{/key_id}",
+      "id": 3947293,
+      "homepage": "",
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/rplevy/lambic/subscription",
+      "notifications_url": "https://api.github.com/repos/rplevy/lambic/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/rplevy/lambic/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/rplevy/lambic/contents/{+path}",
+      "watchers": 25,
+      "name": "lambic",
+      "compare_url": "https://api.github.com/repos/rplevy/lambic/compare/{base}...{head}",
+      "open_issues": 0,
+      "stargazers_url": "https://api.github.com/repos/rplevy/lambic/stargazers",
+      "has_issues": true,
+      "updated_at": "2014-03-25T04:13:05Z",
+      "git_url": "git://github.com/rplevy/lambic.git",
+      "assignees_url": "https://api.github.com/repos/rplevy/lambic/assignees{/user}",
+      "open_issues_count": 0,
+      "commits_url": "https://api.github.com/repos/rplevy/lambic/commits{/sha}",
+      "html_url": "https://github.com/rplevy/lambic",
+      "labels_url": "https://api.github.com/repos/rplevy/lambic/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/rplevy/lambic/git/refs{/sha}",
+      "forks_count": 0,
+      "issue_events_url": "https://api.github.com/repos/rplevy/lambic/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/rplevy/lambic/languages",
+      "downloads_url": "https://api.github.com/repos/rplevy/lambic/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/rplevy/lambic/comments{/number}",
+      "archive_url": "https://api.github.com/repos/rplevy/lambic/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/rplevy/lambic/events",
+      "watchers_count": 25,
+      "hooks_url": "https://api.github.com/repos/rplevy/lambic/hooks",
+      "created_at": "2012-04-06T06:03:51Z",
+      "teams_url": "https://api.github.com/repos/rplevy/lambic/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 260,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/rplevy/lambic/subscribers",
+      "releases_url": "https://api.github.com/repos/rplevy/lambic/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/rplevy/lambic/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/rplevy/lambic/statuses/{sha}",
+      "clone_url": "https://github.com/rplevy/lambic.git",
+      "forks_url": "https://api.github.com/repos/rplevy/lambic/forks",
+      "issues_url": "https://api.github.com/repos/rplevy/lambic/issues{/number}",
+      "description": "Sequence transformation by example",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/rplevy/lambic/merges",
+      "git_tags_url": "https://api.github.com/repos/rplevy/lambic/git/tags{/sha}",
+      "svn_url": "https://github.com/rplevy/lambic"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/s312569/clj-biosequence/git/commits{/sha}",
+      "pushed_at": "2017-04-09T23:15:07Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/s312569/received_events",
+        "url": "https://api.github.com/users/s312569",
+        "followers_url": "https://api.github.com/users/s312569/followers",
+        "avatar_url": "https://avatars3.githubusercontent.com/u/4978988?v=3",
+        "subscriptions_url": "https://api.github.com/users/s312569/subscriptions",
+        "site_admin": false,
+        "id": 4978988,
+        "organizations_url": "https://api.github.com/users/s312569/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/s312569",
+        "starred_url": "https://api.github.com/users/s312569/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/s312569/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/s312569/repos",
+        "events_url": "https://api.github.com/users/s312569/events{/privacy}",
+        "login": "s312569",
+        "gists_url": "https://api.github.com/users/s312569/gists{/gist_id}"
+      },
+      "score": 5.9892235,
+      "url": "https://api.github.com/repos/s312569/clj-biosequence",
+      "contributors_url": "https://api.github.com/repos/s312569/clj-biosequence/contributors",
+      "trees_url": "https://api.github.com/repos/s312569/clj-biosequence/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/s312569/clj-biosequence/deployments",
+      "full_name": "s312569/clj-biosequence",
+      "milestones_url": "https://api.github.com/repos/s312569/clj-biosequence/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/s312569/clj-biosequence/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/s312569/clj-biosequence/tags",
+      "blobs_url": "https://api.github.com/repos/s312569/clj-biosequence/git/blobs{/sha}",
+      "stargazers_count": 60,
+      "ssh_url": "git@github.com:s312569/clj-biosequence.git",
+      "forks": 8,
+      "has_pages": true,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/s312569/clj-biosequence/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/s312569/clj-biosequence/keys{/key_id}",
+      "id": 11303383,
+      "homepage": null,
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/s312569/clj-biosequence/subscription",
+      "notifications_url": "https://api.github.com/repos/s312569/clj-biosequence/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/s312569/clj-biosequence/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/s312569/clj-biosequence/contents/{+path}",
+      "watchers": 60,
+      "name": "clj-biosequence",
+      "compare_url": "https://api.github.com/repos/s312569/clj-biosequence/compare/{base}...{head}",
+      "open_issues": 13,
+      "stargazers_url": "https://api.github.com/repos/s312569/clj-biosequence/stargazers",
+      "has_issues": true,
+      "updated_at": "2017-04-05T02:19:06Z",
+      "git_url": "git://github.com/s312569/clj-biosequence.git",
+      "assignees_url": "https://api.github.com/repos/s312569/clj-biosequence/assignees{/user}",
+      "open_issues_count": 13,
+      "commits_url": "https://api.github.com/repos/s312569/clj-biosequence/commits{/sha}",
+      "html_url": "https://github.com/s312569/clj-biosequence",
+      "labels_url": "https://api.github.com/repos/s312569/clj-biosequence/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/s312569/clj-biosequence/git/refs{/sha}",
+      "forks_count": 8,
+      "issue_events_url": "https://api.github.com/repos/s312569/clj-biosequence/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/s312569/clj-biosequence/languages",
+      "downloads_url": "https://api.github.com/repos/s312569/clj-biosequence/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/s312569/clj-biosequence/comments{/number}",
+      "archive_url": "https://api.github.com/repos/s312569/clj-biosequence/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/s312569/clj-biosequence/events",
+      "watchers_count": 60,
+      "hooks_url": "https://api.github.com/repos/s312569/clj-biosequence/hooks",
+      "created_at": "2013-07-10T05:38:03Z",
+      "teams_url": "https://api.github.com/repos/s312569/clj-biosequence/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 4936,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/s312569/clj-biosequence/subscribers",
+      "releases_url": "https://api.github.com/repos/s312569/clj-biosequence/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/s312569/clj-biosequence/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/s312569/clj-biosequence/statuses/{sha}",
+      "clone_url": "https://github.com/s312569/clj-biosequence.git",
+      "forks_url": "https://api.github.com/repos/s312569/clj-biosequence/forks",
+      "issues_url": "https://api.github.com/repos/s312569/clj-biosequence/issues{/number}",
+      "description": "A Clojure library designed to make the manipulation of biological sequence data easier.",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/s312569/clj-biosequence/merges",
+      "git_tags_url": "https://api.github.com/repos/s312569/clj-biosequence/git/tags{/sha}",
+      "svn_url": "https://github.com/s312569/clj-biosequence"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/paulbutcher/foldable-seq/git/commits{/sha}",
+      "pushed_at": "2013-04-17T16:03:57Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/paulbutcher/received_events",
+        "url": "https://api.github.com/users/paulbutcher",
+        "followers_url": "https://api.github.com/users/paulbutcher/followers",
+        "avatar_url": "https://avatars0.githubusercontent.com/u/61163?v=3",
+        "subscriptions_url": "https://api.github.com/users/paulbutcher/subscriptions",
+        "site_admin": false,
+        "id": 61163,
+        "organizations_url": "https://api.github.com/users/paulbutcher/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/paulbutcher",
+        "starred_url": "https://api.github.com/users/paulbutcher/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/paulbutcher/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/paulbutcher/repos",
+        "events_url": "https://api.github.com/users/paulbutcher/events{/privacy}",
+        "login": "paulbutcher",
+        "gists_url": "https://api.github.com/users/paulbutcher/gists{/gist_id}"
+      },
+      "score": 5.3712626,
+      "url": "https://api.github.com/repos/paulbutcher/foldable-seq",
+      "contributors_url": "https://api.github.com/repos/paulbutcher/foldable-seq/contributors",
+      "trees_url": "https://api.github.com/repos/paulbutcher/foldable-seq/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/paulbutcher/foldable-seq/deployments",
+      "full_name": "paulbutcher/foldable-seq",
+      "milestones_url": "https://api.github.com/repos/paulbutcher/foldable-seq/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/paulbutcher/foldable-seq/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/paulbutcher/foldable-seq/tags",
+      "blobs_url": "https://api.github.com/repos/paulbutcher/foldable-seq/git/blobs{/sha}",
+      "stargazers_count": 14,
+      "ssh_url": "git@github.com:paulbutcher/foldable-seq.git",
+      "forks": 1,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/paulbutcher/foldable-seq/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/paulbutcher/foldable-seq/keys{/key_id}",
+      "id": 8753316,
+      "homepage": null,
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/paulbutcher/foldable-seq/subscription",
+      "notifications_url": "https://api.github.com/repos/paulbutcher/foldable-seq/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/paulbutcher/foldable-seq/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/paulbutcher/foldable-seq/contents/{+path}",
+      "watchers": 14,
+      "name": "foldable-seq",
+      "compare_url": "https://api.github.com/repos/paulbutcher/foldable-seq/compare/{base}...{head}",
+      "open_issues": 1,
+      "stargazers_url": "https://api.github.com/repos/paulbutcher/foldable-seq/stargazers",
+      "has_issues": true,
+      "updated_at": "2014-01-29T09:00:53Z",
+      "git_url": "git://github.com/paulbutcher/foldable-seq.git",
+      "assignees_url": "https://api.github.com/repos/paulbutcher/foldable-seq/assignees{/user}",
+      "open_issues_count": 1,
+      "commits_url": "https://api.github.com/repos/paulbutcher/foldable-seq/commits{/sha}",
+      "html_url": "https://github.com/paulbutcher/foldable-seq",
+      "labels_url": "https://api.github.com/repos/paulbutcher/foldable-seq/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/paulbutcher/foldable-seq/git/refs{/sha}",
+      "forks_count": 1,
+      "issue_events_url": "https://api.github.com/repos/paulbutcher/foldable-seq/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/paulbutcher/foldable-seq/languages",
+      "downloads_url": "https://api.github.com/repos/paulbutcher/foldable-seq/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/paulbutcher/foldable-seq/comments{/number}",
+      "archive_url": "https://api.github.com/repos/paulbutcher/foldable-seq/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/paulbutcher/foldable-seq/events",
+      "watchers_count": 14,
+      "hooks_url": "https://api.github.com/repos/paulbutcher/foldable-seq/hooks",
+      "created_at": "2013-03-13T13:56:16Z",
+      "teams_url": "https://api.github.com/repos/paulbutcher/foldable-seq/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 104,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/paulbutcher/foldable-seq/subscribers",
+      "releases_url": "https://api.github.com/repos/paulbutcher/foldable-seq/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/paulbutcher/foldable-seq/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/paulbutcher/foldable-seq/statuses/{sha}",
+      "clone_url": "https://github.com/paulbutcher/foldable-seq.git",
+      "forks_url": "https://api.github.com/repos/paulbutcher/foldable-seq/forks",
+      "issues_url": "https://api.github.com/repos/paulbutcher/foldable-seq/issues{/number}",
+      "description": "Making lazy sequences foldable",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/paulbutcher/foldable-seq/merges",
+      "git_tags_url": "https://api.github.com/repos/paulbutcher/foldable-seq/git/tags{/sha}",
+      "svn_url": "https://github.com/paulbutcher/foldable-seq"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/lorchaos/sequencer/git/commits{/sha}",
+      "pushed_at": "2012-07-18T21:44:51Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/lorchaos/received_events",
+        "url": "https://api.github.com/users/lorchaos",
+        "followers_url": "https://api.github.com/users/lorchaos/followers",
+        "avatar_url": "https://avatars1.githubusercontent.com/u/7560?v=3",
+        "subscriptions_url": "https://api.github.com/users/lorchaos/subscriptions",
+        "site_admin": false,
+        "id": 7560,
+        "organizations_url": "https://api.github.com/users/lorchaos/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/lorchaos",
+        "starred_url": "https://api.github.com/users/lorchaos/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/lorchaos/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/lorchaos/repos",
+        "events_url": "https://api.github.com/users/lorchaos/events{/privacy}",
+        "login": "lorchaos",
+        "gists_url": "https://api.github.com/users/lorchaos/gists{/gist_id}"
+      },
+      "score": 5.2984085,
+      "url": "https://api.github.com/repos/lorchaos/sequencer",
+      "contributors_url": "https://api.github.com/repos/lorchaos/sequencer/contributors",
+      "trees_url": "https://api.github.com/repos/lorchaos/sequencer/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/lorchaos/sequencer/deployments",
+      "full_name": "lorchaos/sequencer",
+      "milestones_url": "https://api.github.com/repos/lorchaos/sequencer/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/lorchaos/sequencer/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/lorchaos/sequencer/tags",
+      "blobs_url": "https://api.github.com/repos/lorchaos/sequencer/git/blobs{/sha}",
+      "stargazers_count": 1,
+      "ssh_url": "git@github.com:lorchaos/sequencer.git",
+      "forks": 0,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/lorchaos/sequencer/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/lorchaos/sequencer/keys{/key_id}",
+      "id": 5088738,
+      "homepage": null,
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/lorchaos/sequencer/subscription",
+      "notifications_url": "https://api.github.com/repos/lorchaos/sequencer/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/lorchaos/sequencer/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/lorchaos/sequencer/contents/{+path}",
+      "watchers": 1,
+      "name": "sequencer",
+      "compare_url": "https://api.github.com/repos/lorchaos/sequencer/compare/{base}...{head}",
+      "open_issues": 0,
+      "stargazers_url": "https://api.github.com/repos/lorchaos/sequencer/stargazers",
+      "has_issues": true,
+      "updated_at": "2013-10-24T10:36:52Z",
+      "git_url": "git://github.com/lorchaos/sequencer.git",
+      "assignees_url": "https://api.github.com/repos/lorchaos/sequencer/assignees{/user}",
+      "open_issues_count": 0,
+      "commits_url": "https://api.github.com/repos/lorchaos/sequencer/commits{/sha}",
+      "html_url": "https://github.com/lorchaos/sequencer",
+      "labels_url": "https://api.github.com/repos/lorchaos/sequencer/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/lorchaos/sequencer/git/refs{/sha}",
+      "forks_count": 0,
+      "issue_events_url": "https://api.github.com/repos/lorchaos/sequencer/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/lorchaos/sequencer/languages",
+      "downloads_url": "https://api.github.com/repos/lorchaos/sequencer/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/lorchaos/sequencer/comments{/number}",
+      "archive_url": "https://api.github.com/repos/lorchaos/sequencer/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/lorchaos/sequencer/events",
+      "watchers_count": 1,
+      "hooks_url": "https://api.github.com/repos/lorchaos/sequencer/hooks",
+      "created_at": "2012-07-17T22:03:06Z",
+      "teams_url": "https://api.github.com/repos/lorchaos/sequencer/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 92,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/lorchaos/sequencer/subscribers",
+      "releases_url": "https://api.github.com/repos/lorchaos/sequencer/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/lorchaos/sequencer/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/lorchaos/sequencer/statuses/{sha}",
+      "clone_url": "https://github.com/lorchaos/sequencer.git",
+      "forks_url": "https://api.github.com/repos/lorchaos/sequencer/forks",
+      "issues_url": "https://api.github.com/repos/lorchaos/sequencer/issues{/number}",
+      "description": "Little experiment generating sequences for concurrent clients",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/lorchaos/sequencer/merges",
+      "git_tags_url": "https://api.github.com/repos/lorchaos/sequencer/git/tags{/sha}",
+      "svn_url": "https://github.com/lorchaos/sequencer"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/velveteer/sequences/git/commits{/sha}",
+      "pushed_at": "2016-07-07T06:07:26Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/velveteer/received_events",
+        "url": "https://api.github.com/users/velveteer",
+        "followers_url": "https://api.github.com/users/velveteer/followers",
+        "avatar_url": "https://avatars3.githubusercontent.com/u/3134804?v=3",
+        "subscriptions_url": "https://api.github.com/users/velveteer/subscriptions",
+        "site_admin": false,
+        "id": 3134804,
+        "organizations_url": "https://api.github.com/users/velveteer/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/velveteer",
+        "starred_url": "https://api.github.com/users/velveteer/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/velveteer/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/velveteer/repos",
+        "events_url": "https://api.github.com/users/velveteer/events{/privacy}",
+        "login": "velveteer",
+        "gists_url": "https://api.github.com/users/velveteer/gists{/gist_id}"
+      },
+      "score": 5.2984085,
+      "url": "https://api.github.com/repos/velveteer/sequences",
+      "contributors_url": "https://api.github.com/repos/velveteer/sequences/contributors",
+      "trees_url": "https://api.github.com/repos/velveteer/sequences/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/velveteer/sequences/deployments",
+      "full_name": "velveteer/sequences",
+      "milestones_url": "https://api.github.com/repos/velveteer/sequences/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/velveteer/sequences/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/velveteer/sequences/tags",
+      "blobs_url": "https://api.github.com/repos/velveteer/sequences/git/blobs{/sha}",
+      "stargazers_count": 1,
+      "ssh_url": "git@github.com:velveteer/sequences.git",
+      "forks": 0,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/velveteer/sequences/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/velveteer/sequences/keys{/key_id}",
+      "id": 53389486,
+      "homepage": "",
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/velveteer/sequences/subscription",
+      "notifications_url": "https://api.github.com/repos/velveteer/sequences/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/velveteer/sequences/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/velveteer/sequences/contents/{+path}",
+      "watchers": 1,
+      "name": "sequences",
+      "compare_url": "https://api.github.com/repos/velveteer/sequences/compare/{base}...{head}",
+      "open_issues": 0,
+      "stargazers_url": "https://api.github.com/repos/velveteer/sequences/stargazers",
+      "has_issues": true,
+      "updated_at": "2016-07-07T05:41:06Z",
+      "git_url": "git://github.com/velveteer/sequences.git",
+      "assignees_url": "https://api.github.com/repos/velveteer/sequences/assignees{/user}",
+      "open_issues_count": 0,
+      "commits_url": "https://api.github.com/repos/velveteer/sequences/commits{/sha}",
+      "html_url": "https://github.com/velveteer/sequences",
+      "labels_url": "https://api.github.com/repos/velveteer/sequences/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/velveteer/sequences/git/refs{/sha}",
+      "forks_count": 0,
+      "issue_events_url": "https://api.github.com/repos/velveteer/sequences/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/velveteer/sequences/languages",
+      "downloads_url": "https://api.github.com/repos/velveteer/sequences/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/velveteer/sequences/comments{/number}",
+      "archive_url": "https://api.github.com/repos/velveteer/sequences/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/velveteer/sequences/events",
+      "watchers_count": 1,
+      "hooks_url": "https://api.github.com/repos/velveteer/sequences/hooks",
+      "created_at": "2016-03-08T06:45:52Z",
+      "teams_url": "https://api.github.com/repos/velveteer/sequences/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 610,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/velveteer/sequences/subscribers",
+      "releases_url": "https://api.github.com/repos/velveteer/sequences/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/velveteer/sequences/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/velveteer/sequences/statuses/{sha}",
+      "clone_url": "https://github.com/velveteer/sequences.git",
+      "forks_url": "https://api.github.com/repos/velveteer/sequences/forks",
+      "issues_url": "https://api.github.com/repos/velveteer/sequences/issues{/number}",
+      "description": "Generative art with Leipzig, Quil, and infinite sequences",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/velveteer/sequences/merges",
+      "git_tags_url": "https://api.github.com/repos/velveteer/sequences/git/tags{/sha}",
+      "svn_url": "https://github.com/velveteer/sequences"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/brandonbloom/asyncx/git/commits{/sha}",
+      "pushed_at": "2015-03-05T03:53:44Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/brandonbloom/received_events",
+        "url": "https://api.github.com/users/brandonbloom",
+        "followers_url": "https://api.github.com/users/brandonbloom/followers",
+        "avatar_url": "https://avatars3.githubusercontent.com/u/119164?v=3",
+        "subscriptions_url": "https://api.github.com/users/brandonbloom/subscriptions",
+        "site_admin": false,
+        "id": 119164,
+        "organizations_url": "https://api.github.com/users/brandonbloom/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/brandonbloom",
+        "starred_url": "https://api.github.com/users/brandonbloom/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/brandonbloom/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/brandonbloom/repos",
+        "events_url": "https://api.github.com/users/brandonbloom/events{/privacy}",
+        "login": "brandonbloom",
+        "gists_url": "https://api.github.com/users/brandonbloom/gists{/gist_id}"
+      },
+      "score": 5.2794485,
+      "url": "https://api.github.com/repos/brandonbloom/asyncx",
+      "contributors_url": "https://api.github.com/repos/brandonbloom/asyncx/contributors",
+      "trees_url": "https://api.github.com/repos/brandonbloom/asyncx/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/brandonbloom/asyncx/deployments",
+      "full_name": "brandonbloom/asyncx",
+      "milestones_url": "https://api.github.com/repos/brandonbloom/asyncx/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/brandonbloom/asyncx/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/brandonbloom/asyncx/tags",
+      "blobs_url": "https://api.github.com/repos/brandonbloom/asyncx/git/blobs{/sha}",
+      "stargazers_count": 54,
+      "ssh_url": "git@github.com:brandonbloom/asyncx.git",
+      "forks": 3,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/brandonbloom/asyncx/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/brandonbloom/asyncx/keys{/key_id}",
+      "id": 11077849,
+      "homepage": "",
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/brandonbloom/asyncx/subscription",
+      "notifications_url": "https://api.github.com/repos/brandonbloom/asyncx/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/brandonbloom/asyncx/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/brandonbloom/asyncx/contents/{+path}",
+      "watchers": 54,
+      "name": "asyncx",
+      "compare_url": "https://api.github.com/repos/brandonbloom/asyncx/compare/{base}...{head}",
+      "open_issues": 0,
+      "stargazers_url": "https://api.github.com/repos/brandonbloom/asyncx/stargazers",
+      "has_issues": true,
+      "updated_at": "2017-01-19T08:48:04Z",
+      "git_url": "git://github.com/brandonbloom/asyncx.git",
+      "assignees_url": "https://api.github.com/repos/brandonbloom/asyncx/assignees{/user}",
+      "open_issues_count": 0,
+      "commits_url": "https://api.github.com/repos/brandonbloom/asyncx/commits{/sha}",
+      "html_url": "https://github.com/brandonbloom/asyncx",
+      "labels_url": "https://api.github.com/repos/brandonbloom/asyncx/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/brandonbloom/asyncx/git/refs{/sha}",
+      "forks_count": 3,
+      "issue_events_url": "https://api.github.com/repos/brandonbloom/asyncx/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/brandonbloom/asyncx/languages",
+      "downloads_url": "https://api.github.com/repos/brandonbloom/asyncx/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/brandonbloom/asyncx/comments{/number}",
+      "archive_url": "https://api.github.com/repos/brandonbloom/asyncx/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/brandonbloom/asyncx/events",
+      "watchers_count": 54,
+      "hooks_url": "https://api.github.com/repos/brandonbloom/asyncx/hooks",
+      "created_at": "2013-06-30T21:14:46Z",
+      "teams_url": "https://api.github.com/repos/brandonbloom/asyncx/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 196,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/brandonbloom/asyncx/subscribers",
+      "releases_url": "https://api.github.com/repos/brandonbloom/asyncx/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/brandonbloom/asyncx/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/brandonbloom/asyncx/statuses/{sha}",
+      "clone_url": "https://github.com/brandonbloom/asyncx.git",
+      "forks_url": "https://api.github.com/repos/brandonbloom/asyncx/forks",
+      "issues_url": "https://api.github.com/repos/brandonbloom/asyncx/issues{/number}",
+      "description": "Some push sequence operators built with Clojure's core.async",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/brandonbloom/asyncx/merges",
+      "git_tags_url": "https://api.github.com/repos/brandonbloom/asyncx/git/tags{/sha}",
+      "svn_url": "https://github.com/brandonbloom/asyncx"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/soulflyer/sequencer/git/commits{/sha}",
+      "pushed_at": "2016-02-19T13:58:28Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/soulflyer/received_events",
+        "url": "https://api.github.com/users/soulflyer",
+        "followers_url": "https://api.github.com/users/soulflyer/followers",
+        "avatar_url": "https://avatars2.githubusercontent.com/u/52937?v=3",
+        "subscriptions_url": "https://api.github.com/users/soulflyer/subscriptions",
+        "site_admin": false,
+        "id": 52937,
+        "organizations_url": "https://api.github.com/users/soulflyer/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/soulflyer",
+        "starred_url": "https://api.github.com/users/soulflyer/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/soulflyer/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/soulflyer/repos",
+        "events_url": "https://api.github.com/users/soulflyer/events{/privacy}",
+        "login": "soulflyer",
+        "gists_url": "https://api.github.com/users/soulflyer/gists{/gist_id}"
+      },
+      "score": 5.274758,
+      "url": "https://api.github.com/repos/soulflyer/sequencer",
+      "contributors_url": "https://api.github.com/repos/soulflyer/sequencer/contributors",
+      "trees_url": "https://api.github.com/repos/soulflyer/sequencer/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/soulflyer/sequencer/deployments",
+      "full_name": "soulflyer/sequencer",
+      "milestones_url": "https://api.github.com/repos/soulflyer/sequencer/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/soulflyer/sequencer/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/soulflyer/sequencer/tags",
+      "blobs_url": "https://api.github.com/repos/soulflyer/sequencer/git/blobs{/sha}",
+      "stargazers_count": 0,
+      "ssh_url": "git@github.com:soulflyer/sequencer.git",
+      "forks": 0,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/soulflyer/sequencer/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/soulflyer/sequencer/keys{/key_id}",
+      "id": 52067048,
+      "homepage": null,
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/soulflyer/sequencer/subscription",
+      "notifications_url": "https://api.github.com/repos/soulflyer/sequencer/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/soulflyer/sequencer/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/soulflyer/sequencer/contents/{+path}",
+      "watchers": 0,
+      "name": "sequencer",
+      "compare_url": "https://api.github.com/repos/soulflyer/sequencer/compare/{base}...{head}",
+      "open_issues": 0,
+      "stargazers_url": "https://api.github.com/repos/soulflyer/sequencer/stargazers",
+      "has_issues": true,
+      "updated_at": "2016-02-19T07:14:03Z",
+      "git_url": "git://github.com/soulflyer/sequencer.git",
+      "assignees_url": "https://api.github.com/repos/soulflyer/sequencer/assignees{/user}",
+      "open_issues_count": 0,
+      "commits_url": "https://api.github.com/repos/soulflyer/sequencer/commits{/sha}",
+      "html_url": "https://github.com/soulflyer/sequencer",
+      "labels_url": "https://api.github.com/repos/soulflyer/sequencer/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/soulflyer/sequencer/git/refs{/sha}",
+      "forks_count": 0,
+      "issue_events_url": "https://api.github.com/repos/soulflyer/sequencer/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/soulflyer/sequencer/languages",
+      "downloads_url": "https://api.github.com/repos/soulflyer/sequencer/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/soulflyer/sequencer/comments{/number}",
+      "archive_url": "https://api.github.com/repos/soulflyer/sequencer/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/soulflyer/sequencer/events",
+      "watchers_count": 0,
+      "hooks_url": "https://api.github.com/repos/soulflyer/sequencer/hooks",
+      "created_at": "2016-02-19T06:37:18Z",
+      "teams_url": "https://api.github.com/repos/soulflyer/sequencer/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 17,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/soulflyer/sequencer/subscribers",
+      "releases_url": "https://api.github.com/repos/soulflyer/sequencer/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/soulflyer/sequencer/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/soulflyer/sequencer/statuses/{sha}",
+      "clone_url": "https://github.com/soulflyer/sequencer.git",
+      "forks_url": "https://api.github.com/repos/soulflyer/sequencer/forks",
+      "issues_url": "https://api.github.com/repos/soulflyer/sequencer/issues{/number}",
+      "description": "Overtone sequencer",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/soulflyer/sequencer/merges",
+      "git_tags_url": "https://api.github.com/repos/soulflyer/sequencer/git/tags{/sha}",
+      "svn_url": "https://github.com/soulflyer/sequencer"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/jellea/-midi-seq/git/commits{/sha}",
+      "pushed_at": "2014-09-02T08:38:07Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/jellea/received_events",
+        "url": "https://api.github.com/users/jellea",
+        "followers_url": "https://api.github.com/users/jellea/followers",
+        "avatar_url": "https://avatars0.githubusercontent.com/u/902679?v=3",
+        "subscriptions_url": "https://api.github.com/users/jellea/subscriptions",
+        "site_admin": false,
+        "id": 902679,
+        "organizations_url": "https://api.github.com/users/jellea/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/jellea",
+        "starred_url": "https://api.github.com/users/jellea/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/jellea/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/jellea/repos",
+        "events_url": "https://api.github.com/users/jellea/events{/privacy}",
+        "login": "jellea",
+        "gists_url": "https://api.github.com/users/jellea/gists{/gist_id}"
+      },
+      "score": 5.1975465,
+      "url": "https://api.github.com/repos/jellea/-midi-seq",
+      "contributors_url": "https://api.github.com/repos/jellea/-midi-seq/contributors",
+      "trees_url": "https://api.github.com/repos/jellea/-midi-seq/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/jellea/-midi-seq/deployments",
+      "full_name": "jellea/-midi-seq",
+      "milestones_url": "https://api.github.com/repos/jellea/-midi-seq/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/jellea/-midi-seq/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/jellea/-midi-seq/tags",
+      "blobs_url": "https://api.github.com/repos/jellea/-midi-seq/git/blobs{/sha}",
+      "stargazers_count": 2,
+      "ssh_url": "git@github.com:jellea/-midi-seq.git",
+      "forks": 4,
+      "has_pages": true,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/jellea/-midi-seq/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/jellea/-midi-seq/keys{/key_id}",
+      "id": 21236871,
+      "homepage": "",
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/jellea/-midi-seq/subscription",
+      "notifications_url": "https://api.github.com/repos/jellea/-midi-seq/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/jellea/-midi-seq/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/jellea/-midi-seq/contents/{+path}",
+      "watchers": 2,
+      "name": "-midi-seq",
+      "compare_url": "https://api.github.com/repos/jellea/-midi-seq/compare/{base}...{head}",
+      "open_issues": 0,
+      "stargazers_url": "https://api.github.com/repos/jellea/-midi-seq/stargazers",
+      "has_issues": true,
+      "updated_at": "2015-09-12T06:29:59Z",
+      "git_url": "git://github.com/jellea/-midi-seq.git",
+      "assignees_url": "https://api.github.com/repos/jellea/-midi-seq/assignees{/user}",
+      "open_issues_count": 0,
+      "commits_url": "https://api.github.com/repos/jellea/-midi-seq/commits{/sha}",
+      "html_url": "https://github.com/jellea/-midi-seq",
+      "labels_url": "https://api.github.com/repos/jellea/-midi-seq/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/jellea/-midi-seq/git/refs{/sha}",
+      "forks_count": 4,
+      "issue_events_url": "https://api.github.com/repos/jellea/-midi-seq/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/jellea/-midi-seq/languages",
+      "downloads_url": "https://api.github.com/repos/jellea/-midi-seq/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/jellea/-midi-seq/comments{/number}",
+      "archive_url": "https://api.github.com/repos/jellea/-midi-seq/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/jellea/-midi-seq/events",
+      "watchers_count": 2,
+      "hooks_url": "https://api.github.com/repos/jellea/-midi-seq/hooks",
+      "created_at": "2014-06-26T10:23:27Z",
+      "teams_url": "https://api.github.com/repos/jellea/-midi-seq/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 204,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/jellea/-midi-seq/subscribers",
+      "releases_url": "https://api.github.com/repos/jellea/-midi-seq/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/jellea/-midi-seq/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/jellea/-midi-seq/statuses/{sha}",
+      "clone_url": "https://github.com/jellea/-midi-seq.git",
+      "forks_url": "https://api.github.com/repos/jellea/-midi-seq/forks",
+      "issues_url": "https://api.github.com/repos/jellea/-midi-seq/issues{/number}",
+      "description": "Quil/Overtone polymetric midi sequencer",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/jellea/-midi-seq/merges",
+      "git_tags_url": "https://api.github.com/repos/jellea/-midi-seq/git/tags{/sha}",
+      "svn_url": "https://github.com/jellea/-midi-seq"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/wagjo/diff-cljs/git/commits{/sha}",
+      "pushed_at": "2016-08-19T21:18:15Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/wagjo/received_events",
+        "url": "https://api.github.com/users/wagjo",
+        "followers_url": "https://api.github.com/users/wagjo/followers",
+        "avatar_url": "https://avatars0.githubusercontent.com/u/237085?v=3",
+        "subscriptions_url": "https://api.github.com/users/wagjo/subscriptions",
+        "site_admin": false,
+        "id": 237085,
+        "organizations_url": "https://api.github.com/users/wagjo/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/wagjo",
+        "starred_url": "https://api.github.com/users/wagjo/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/wagjo/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/wagjo/repos",
+        "events_url": "https://api.github.com/users/wagjo/events{/privacy}",
+        "login": "wagjo",
+        "gists_url": "https://api.github.com/users/wagjo/gists{/gist_id}"
+      },
+      "score": 4.710892,
+      "url": "https://api.github.com/repos/wagjo/diff-cljs",
+      "contributors_url": "https://api.github.com/repos/wagjo/diff-cljs/contributors",
+      "trees_url": "https://api.github.com/repos/wagjo/diff-cljs/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/wagjo/diff-cljs/deployments",
+      "full_name": "wagjo/diff-cljs",
+      "milestones_url": "https://api.github.com/repos/wagjo/diff-cljs/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/wagjo/diff-cljs/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/wagjo/diff-cljs/tags",
+      "blobs_url": "https://api.github.com/repos/wagjo/diff-cljs/git/blobs{/sha}",
+      "stargazers_count": 8,
+      "ssh_url": "git@github.com:wagjo/diff-cljs.git",
+      "forks": 1,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/wagjo/diff-cljs/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/wagjo/diff-cljs/keys{/key_id}",
+      "id": 7828458,
+      "homepage": null,
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/wagjo/diff-cljs/subscription",
+      "notifications_url": "https://api.github.com/repos/wagjo/diff-cljs/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/wagjo/diff-cljs/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/wagjo/diff-cljs/contents/{+path}",
+      "watchers": 8,
+      "name": "diff-cljs",
+      "compare_url": "https://api.github.com/repos/wagjo/diff-cljs/compare/{base}...{head}",
+      "open_issues": 0,
+      "stargazers_url": "https://api.github.com/repos/wagjo/diff-cljs/stargazers",
+      "has_issues": true,
+      "updated_at": "2016-08-14T22:57:54Z",
+      "git_url": "git://github.com/wagjo/diff-cljs.git",
+      "assignees_url": "https://api.github.com/repos/wagjo/diff-cljs/assignees{/user}",
+      "open_issues_count": 0,
+      "commits_url": "https://api.github.com/repos/wagjo/diff-cljs/commits{/sha}",
+      "html_url": "https://github.com/wagjo/diff-cljs",
+      "labels_url": "https://api.github.com/repos/wagjo/diff-cljs/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/wagjo/diff-cljs/git/refs{/sha}",
+      "forks_count": 1,
+      "issue_events_url": "https://api.github.com/repos/wagjo/diff-cljs/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/wagjo/diff-cljs/languages",
+      "downloads_url": "https://api.github.com/repos/wagjo/diff-cljs/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/wagjo/diff-cljs/comments{/number}",
+      "archive_url": "https://api.github.com/repos/wagjo/diff-cljs/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/wagjo/diff-cljs/events",
+      "watchers_count": 8,
+      "hooks_url": "https://api.github.com/repos/wagjo/diff-cljs/hooks",
+      "created_at": "2013-01-25T21:00:28Z",
+      "teams_url": "https://api.github.com/repos/wagjo/diff-cljs/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 15,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/wagjo/diff-cljs/subscribers",
+      "releases_url": "https://api.github.com/repos/wagjo/diff-cljs/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/wagjo/diff-cljs/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/wagjo/diff-cljs/statuses/{sha}",
+      "clone_url": "https://github.com/wagjo/diff-cljs.git",
+      "forks_url": "https://api.github.com/repos/wagjo/diff-cljs/forks",
+      "issues_url": "https://api.github.com/repos/wagjo/diff-cljs/issues{/number}",
+      "description": "Diff for ClojureScript Sequences",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/wagjo/diff-cljs/merges",
+      "git_tags_url": "https://api.github.com/repos/wagjo/diff-cljs/git/tags{/sha}",
+      "svn_url": "https://github.com/wagjo/diff-cljs"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/chrovis/cljam/git/commits{/sha}",
+      "pushed_at": "2017-04-17T10:19:13Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/chrovis/received_events",
+        "url": "https://api.github.com/users/chrovis",
+        "followers_url": "https://api.github.com/users/chrovis/followers",
+        "avatar_url": "https://avatars3.githubusercontent.com/u/6347908?v=3",
+        "subscriptions_url": "https://api.github.com/users/chrovis/subscriptions",
+        "site_admin": false,
+        "id": 6347908,
+        "organizations_url": "https://api.github.com/users/chrovis/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/chrovis",
+        "starred_url": "https://api.github.com/users/chrovis/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/chrovis/following{/other_user}",
+        "type": "Organization",
+        "repos_url": "https://api.github.com/users/chrovis/repos",
+        "events_url": "https://api.github.com/users/chrovis/events{/privacy}",
+        "login": "chrovis",
+        "gists_url": "https://api.github.com/users/chrovis/gists{/gist_id}"
+      },
+      "score": 4.5010138,
+      "url": "https://api.github.com/repos/chrovis/cljam",
+      "contributors_url": "https://api.github.com/repos/chrovis/cljam/contributors",
+      "trees_url": "https://api.github.com/repos/chrovis/cljam/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/chrovis/cljam/deployments",
+      "full_name": "chrovis/cljam",
+      "milestones_url": "https://api.github.com/repos/chrovis/cljam/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/chrovis/cljam/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/chrovis/cljam/tags",
+      "blobs_url": "https://api.github.com/repos/chrovis/cljam/git/blobs{/sha}",
+      "stargazers_count": 15,
+      "ssh_url": "git@github.com:chrovis/cljam.git",
+      "forks": 2,
+      "has_pages": true,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/chrovis/cljam/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/chrovis/cljam/keys{/key_id}",
+      "id": 15731549,
+      "homepage": "https://chrovis.github.io/cljam",
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/chrovis/cljam/subscription",
+      "notifications_url": "https://api.github.com/repos/chrovis/cljam/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/chrovis/cljam/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/chrovis/cljam/contents/{+path}",
+      "watchers": 15,
+      "name": "cljam",
+      "compare_url": "https://api.github.com/repos/chrovis/cljam/compare/{base}...{head}",
+      "open_issues": 3,
+      "stargazers_url": "https://api.github.com/repos/chrovis/cljam/stargazers",
+      "has_issues": true,
+      "updated_at": "2017-04-11T09:17:48Z",
+      "git_url": "git://github.com/chrovis/cljam.git",
+      "assignees_url": "https://api.github.com/repos/chrovis/cljam/assignees{/user}",
+      "open_issues_count": 3,
+      "commits_url": "https://api.github.com/repos/chrovis/cljam/commits{/sha}",
+      "html_url": "https://github.com/chrovis/cljam",
+      "labels_url": "https://api.github.com/repos/chrovis/cljam/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/chrovis/cljam/git/refs{/sha}",
+      "forks_count": 2,
+      "issue_events_url": "https://api.github.com/repos/chrovis/cljam/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/chrovis/cljam/languages",
+      "downloads_url": "https://api.github.com/repos/chrovis/cljam/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/chrovis/cljam/comments{/number}",
+      "archive_url": "https://api.github.com/repos/chrovis/cljam/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/chrovis/cljam/events",
+      "watchers_count": 15,
+      "hooks_url": "https://api.github.com/repos/chrovis/cljam/hooks",
+      "created_at": "2014-01-08T09:52:14Z",
+      "teams_url": "https://api.github.com/repos/chrovis/cljam/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 3984,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/chrovis/cljam/subscribers",
+      "releases_url": "https://api.github.com/repos/chrovis/cljam/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/chrovis/cljam/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/chrovis/cljam/statuses/{sha}",
+      "clone_url": "https://github.com/chrovis/cljam.git",
+      "forks_url": "https://api.github.com/repos/chrovis/cljam/forks",
+      "issues_url": "https://api.github.com/repos/chrovis/cljam/issues{/number}",
+      "description": "A DNA Sequence Alignment/Map (SAM) library for Clojure",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/chrovis/cljam/merges",
+      "git_tags_url": "https://api.github.com/repos/chrovis/cljam/git/tags{/sha}",
+      "svn_url": "https://github.com/chrovis/cljam"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/ztellman/scrawl/git/commits{/sha}",
+      "pushed_at": "2012-03-17T15:18:00Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/ztellman/received_events",
+        "url": "https://api.github.com/users/ztellman",
+        "followers_url": "https://api.github.com/users/ztellman/followers",
+        "avatar_url": "https://avatars3.githubusercontent.com/u/31295?v=3",
+        "subscriptions_url": "https://api.github.com/users/ztellman/subscriptions",
+        "site_admin": false,
+        "id": 31295,
+        "organizations_url": "https://api.github.com/users/ztellman/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ztellman",
+        "starred_url": "https://api.github.com/users/ztellman/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/ztellman/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/ztellman/repos",
+        "events_url": "https://api.github.com/users/ztellman/events{/privacy}",
+        "login": "ztellman",
+        "gists_url": "https://api.github.com/users/ztellman/gists{/gist_id}"
+      },
+      "score": 4.244852,
+      "url": "https://api.github.com/repos/ztellman/scrawl",
+      "contributors_url": "https://api.github.com/repos/ztellman/scrawl/contributors",
+      "trees_url": "https://api.github.com/repos/ztellman/scrawl/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/ztellman/scrawl/deployments",
+      "full_name": "ztellman/scrawl",
+      "milestones_url": "https://api.github.com/repos/ztellman/scrawl/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/ztellman/scrawl/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/ztellman/scrawl/tags",
+      "blobs_url": "https://api.github.com/repos/ztellman/scrawl/git/blobs{/sha}",
+      "stargazers_count": 4,
+      "ssh_url": "git@github.com:ztellman/scrawl.git",
+      "forks": 3,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/ztellman/scrawl/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/ztellman/scrawl/keys{/key_id}",
+      "id": 3748476,
+      "homepage": "",
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/ztellman/scrawl/subscription",
+      "notifications_url": "https://api.github.com/repos/ztellman/scrawl/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/ztellman/scrawl/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/ztellman/scrawl/contents/{+path}",
+      "watchers": 4,
+      "name": "scrawl",
+      "compare_url": "https://api.github.com/repos/ztellman/scrawl/compare/{base}...{head}",
+      "open_issues": 0,
+      "stargazers_url": "https://api.github.com/repos/ztellman/scrawl/stargazers",
+      "has_issues": true,
+      "updated_at": "2016-07-16T21:54:25Z",
+      "git_url": "git://github.com/ztellman/scrawl.git",
+      "assignees_url": "https://api.github.com/repos/ztellman/scrawl/assignees{/user}",
+      "open_issues_count": 0,
+      "commits_url": "https://api.github.com/repos/ztellman/scrawl/commits{/sha}",
+      "html_url": "https://github.com/ztellman/scrawl",
+      "labels_url": "https://api.github.com/repos/ztellman/scrawl/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/ztellman/scrawl/git/refs{/sha}",
+      "forks_count": 3,
+      "issue_events_url": "https://api.github.com/repos/ztellman/scrawl/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/ztellman/scrawl/languages",
+      "downloads_url": "https://api.github.com/repos/ztellman/scrawl/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/ztellman/scrawl/comments{/number}",
+      "archive_url": "https://api.github.com/repos/ztellman/scrawl/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/ztellman/scrawl/events",
+      "watchers_count": 4,
+      "hooks_url": "https://api.github.com/repos/ztellman/scrawl/hooks",
+      "created_at": "2012-03-17T15:17:34Z",
+      "teams_url": "https://api.github.com/repos/ztellman/scrawl/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 91,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/ztellman/scrawl/subscribers",
+      "releases_url": "https://api.github.com/repos/ztellman/scrawl/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/ztellman/scrawl/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/ztellman/scrawl/statuses/{sha}",
+      "clone_url": "https://github.com/ztellman/scrawl.git",
+      "forks_url": "https://api.github.com/repos/ztellman/scrawl/forks",
+      "issues_url": "https://api.github.com/repos/ztellman/scrawl/issues{/number}",
+      "description": "the graphical equivalent of the fibonacci sequence",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/ztellman/scrawl/merges",
+      "git_tags_url": "https://api.github.com/repos/ztellman/scrawl/git/tags{/sha}",
+      "svn_url": "https://github.com/ztellman/scrawl"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/pyr/progress/git/commits{/sha}",
+      "pushed_at": "2015-12-24T10:18:48Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/pyr/received_events",
+        "url": "https://api.github.com/users/pyr",
+        "followers_url": "https://api.github.com/users/pyr/followers",
+        "avatar_url": "https://avatars1.githubusercontent.com/u/110280?v=3",
+        "subscriptions_url": "https://api.github.com/users/pyr/subscriptions",
+        "site_admin": false,
+        "id": 110280,
+        "organizations_url": "https://api.github.com/users/pyr/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/pyr",
+        "starred_url": "https://api.github.com/users/pyr/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/pyr/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/pyr/repos",
+        "events_url": "https://api.github.com/users/pyr/events{/privacy}",
+        "login": "pyr",
+        "gists_url": "https://api.github.com/users/pyr/gists{/gist_id}"
+      },
+      "score": 4.189528,
+      "url": "https://api.github.com/repos/pyr/progress",
+      "contributors_url": "https://api.github.com/repos/pyr/progress/contributors",
+      "trees_url": "https://api.github.com/repos/pyr/progress/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/pyr/progress/deployments",
+      "full_name": "pyr/progress",
+      "milestones_url": "https://api.github.com/repos/pyr/progress/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/pyr/progress/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/pyr/progress/tags",
+      "blobs_url": "https://api.github.com/repos/pyr/progress/git/blobs{/sha}",
+      "stargazers_count": 5,
+      "ssh_url": "git@github.com:pyr/progress.git",
+      "forks": 0,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/pyr/progress/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/pyr/progress/keys{/key_id}",
+      "id": 48499099,
+      "homepage": null,
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/pyr/progress/subscription",
+      "notifications_url": "https://api.github.com/repos/pyr/progress/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/pyr/progress/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/pyr/progress/contents/{+path}",
+      "watchers": 5,
+      "name": "progress",
+      "compare_url": "https://api.github.com/repos/pyr/progress/compare/{base}...{head}",
+      "open_issues": 0,
+      "stargazers_url": "https://api.github.com/repos/pyr/progress/stargazers",
+      "has_issues": true,
+      "updated_at": "2016-01-07T19:54:37Z",
+      "git_url": "git://github.com/pyr/progress.git",
+      "assignees_url": "https://api.github.com/repos/pyr/progress/assignees{/user}",
+      "open_issues_count": 0,
+      "commits_url": "https://api.github.com/repos/pyr/progress/commits{/sha}",
+      "html_url": "https://github.com/pyr/progress",
+      "labels_url": "https://api.github.com/repos/pyr/progress/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/pyr/progress/git/refs{/sha}",
+      "forks_count": 0,
+      "issue_events_url": "https://api.github.com/repos/pyr/progress/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/pyr/progress/languages",
+      "downloads_url": "https://api.github.com/repos/pyr/progress/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/pyr/progress/comments{/number}",
+      "archive_url": "https://api.github.com/repos/pyr/progress/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/pyr/progress/events",
+      "watchers_count": 5,
+      "hooks_url": "https://api.github.com/repos/pyr/progress/hooks",
+      "created_at": "2015-12-23T16:03:46Z",
+      "teams_url": "https://api.github.com/repos/pyr/progress/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 3,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/pyr/progress/subscribers",
+      "releases_url": "https://api.github.com/repos/pyr/progress/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/pyr/progress/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/pyr/progress/statuses/{sha}",
+      "clone_url": "https://github.com/pyr/progress.git",
+      "forks_url": "https://api.github.com/repos/pyr/progress/forks",
+      "issues_url": "https://api.github.com/repos/pyr/progress/issues{/number}",
+      "description": "sequence progress bars",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/pyr/progress/merges",
+      "git_tags_url": "https://api.github.com/repos/pyr/progress/git/tags{/sha}",
+      "svn_url": "https://github.com/pyr/progress"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/jumski/breakage/git/commits{/sha}",
+      "pushed_at": "2016-09-06T10:20:59Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/jumski/received_events",
+        "url": "https://api.github.com/users/jumski",
+        "followers_url": "https://api.github.com/users/jumski/followers",
+        "avatar_url": "https://avatars2.githubusercontent.com/u/9126?v=3",
+        "subscriptions_url": "https://api.github.com/users/jumski/subscriptions",
+        "site_admin": false,
+        "id": 9126,
+        "organizations_url": "https://api.github.com/users/jumski/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/jumski",
+        "starred_url": "https://api.github.com/users/jumski/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/jumski/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/jumski/repos",
+        "events_url": "https://api.github.com/users/jumski/events{/privacy}",
+        "login": "jumski",
+        "gists_url": "https://api.github.com/users/jumski/gists{/gist_id}"
+      },
+      "score": 3.9657252,
+      "url": "https://api.github.com/repos/jumski/breakage",
+      "contributors_url": "https://api.github.com/repos/jumski/breakage/contributors",
+      "trees_url": "https://api.github.com/repos/jumski/breakage/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/jumski/breakage/deployments",
+      "full_name": "jumski/breakage",
+      "milestones_url": "https://api.github.com/repos/jumski/breakage/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/jumski/breakage/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/jumski/breakage/tags",
+      "blobs_url": "https://api.github.com/repos/jumski/breakage/git/blobs{/sha}",
+      "stargazers_count": 4,
+      "ssh_url": "git@github.com:jumski/breakage.git",
+      "forks": 1,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/jumski/breakage/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/jumski/breakage/keys{/key_id}",
+      "id": 13333672,
+      "homepage": "https://github.com/jumski/breakage",
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/jumski/breakage/subscription",
+      "notifications_url": "https://api.github.com/repos/jumski/breakage/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/jumski/breakage/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/jumski/breakage/contents/{+path}",
+      "watchers": 4,
+      "name": "breakage",
+      "compare_url": "https://api.github.com/repos/jumski/breakage/compare/{base}...{head}",
+      "open_issues": 0,
+      "stargazers_url": "https://api.github.com/repos/jumski/breakage/stargazers",
+      "has_issues": true,
+      "updated_at": "2016-02-18T17:04:49Z",
+      "git_url": "git://github.com/jumski/breakage.git",
+      "assignees_url": "https://api.github.com/repos/jumski/breakage/assignees{/user}",
+      "open_issues_count": 0,
+      "commits_url": "https://api.github.com/repos/jumski/breakage/commits{/sha}",
+      "html_url": "https://github.com/jumski/breakage",
+      "labels_url": "https://api.github.com/repos/jumski/breakage/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/jumski/breakage/git/refs{/sha}",
+      "forks_count": 1,
+      "issue_events_url": "https://api.github.com/repos/jumski/breakage/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/jumski/breakage/languages",
+      "downloads_url": "https://api.github.com/repos/jumski/breakage/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/jumski/breakage/comments{/number}",
+      "archive_url": "https://api.github.com/repos/jumski/breakage/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/jumski/breakage/events",
+      "watchers_count": 4,
+      "hooks_url": "https://api.github.com/repos/jumski/breakage/hooks",
+      "created_at": "2013-10-04T20:11:04Z",
+      "teams_url": "https://api.github.com/repos/jumski/breakage/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 1671,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/jumski/breakage/subscribers",
+      "releases_url": "https://api.github.com/repos/jumski/breakage/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/jumski/breakage/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/jumski/breakage/statuses/{sha}",
+      "clone_url": "https://github.com/jumski/breakage.git",
+      "forks_url": "https://api.github.com/repos/jumski/breakage/forks",
+      "issues_url": "https://api.github.com/repos/jumski/breakage/issues{/number}",
+      "description": "Step sequencer in clojure",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/jumski/breakage/merges",
+      "git_tags_url": "https://api.github.com/repos/jumski/breakage/git/tags{/sha}",
+      "svn_url": "https://github.com/jumski/breakage"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/kevinjqiu/lumiere/git/commits{/sha}",
+      "pushed_at": "2013-08-27T12:44:35Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/kevinjqiu/received_events",
+        "url": "https://api.github.com/users/kevinjqiu",
+        "followers_url": "https://api.github.com/users/kevinjqiu/followers",
+        "avatar_url": "https://avatars1.githubusercontent.com/u/84321?v=3",
+        "subscriptions_url": "https://api.github.com/users/kevinjqiu/subscriptions",
+        "site_admin": false,
+        "id": 84321,
+        "organizations_url": "https://api.github.com/users/kevinjqiu/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/kevinjqiu",
+        "starred_url": "https://api.github.com/users/kevinjqiu/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/kevinjqiu/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/kevinjqiu/repos",
+        "events_url": "https://api.github.com/users/kevinjqiu/events{/privacy}",
+        "login": "kevinjqiu",
+        "gists_url": "https://api.github.com/users/kevinjqiu/gists{/gist_id}"
+      },
+      "score": 3.8719175,
+      "url": "https://api.github.com/repos/kevinjqiu/lumiere",
+      "contributors_url": "https://api.github.com/repos/kevinjqiu/lumiere/contributors",
+      "trees_url": "https://api.github.com/repos/kevinjqiu/lumiere/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/kevinjqiu/lumiere/deployments",
+      "full_name": "kevinjqiu/lumiere",
+      "milestones_url": "https://api.github.com/repos/kevinjqiu/lumiere/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/kevinjqiu/lumiere/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/kevinjqiu/lumiere/tags",
+      "blobs_url": "https://api.github.com/repos/kevinjqiu/lumiere/git/blobs{/sha}",
+      "stargazers_count": 5,
+      "ssh_url": "git@github.com:kevinjqiu/lumiere.git",
+      "forks": 4,
+      "has_pages": true,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/kevinjqiu/lumiere/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/kevinjqiu/lumiere/keys{/key_id}",
+      "id": 3565010,
+      "homepage": "",
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/kevinjqiu/lumiere/subscription",
+      "notifications_url": "https://api.github.com/repos/kevinjqiu/lumiere/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/kevinjqiu/lumiere/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/kevinjqiu/lumiere/contents/{+path}",
+      "watchers": 5,
+      "name": "lumiere",
+      "compare_url": "https://api.github.com/repos/kevinjqiu/lumiere/compare/{base}...{head}",
+      "open_issues": 0,
+      "stargazers_url": "https://api.github.com/repos/kevinjqiu/lumiere/stargazers",
+      "has_issues": true,
+      "updated_at": "2015-02-01T16:11:42Z",
+      "git_url": "git://github.com/kevinjqiu/lumiere.git",
+      "assignees_url": "https://api.github.com/repos/kevinjqiu/lumiere/assignees{/user}",
+      "open_issues_count": 0,
+      "commits_url": "https://api.github.com/repos/kevinjqiu/lumiere/commits{/sha}",
+      "html_url": "https://github.com/kevinjqiu/lumiere",
+      "labels_url": "https://api.github.com/repos/kevinjqiu/lumiere/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/kevinjqiu/lumiere/git/refs{/sha}",
+      "forks_count": 4,
+      "issue_events_url": "https://api.github.com/repos/kevinjqiu/lumiere/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/kevinjqiu/lumiere/languages",
+      "downloads_url": "https://api.github.com/repos/kevinjqiu/lumiere/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/kevinjqiu/lumiere/comments{/number}",
+      "archive_url": "https://api.github.com/repos/kevinjqiu/lumiere/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/kevinjqiu/lumiere/events",
+      "watchers_count": 5,
+      "hooks_url": "https://api.github.com/repos/kevinjqiu/lumiere/hooks",
+      "created_at": "2012-02-27T21:27:25Z",
+      "teams_url": "https://api.github.com/repos/kevinjqiu/lumiere/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 84,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/kevinjqiu/lumiere/subscribers",
+      "releases_url": "https://api.github.com/repos/kevinjqiu/lumiere/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/kevinjqiu/lumiere/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/kevinjqiu/lumiere/statuses/{sha}",
+      "clone_url": "https://github.com/kevinjqiu/lumiere.git",
+      "forks_url": "https://api.github.com/repos/kevinjqiu/lumiere/forks",
+      "issues_url": "https://api.github.com/repos/kevinjqiu/lumiere/issues{/number}",
+      "description": "A Clojure library to output stylized text in console using ANSI escape sequences",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/kevinjqiu/lumiere/merges",
+      "git_tags_url": "https://api.github.com/repos/kevinjqiu/lumiere/git/tags{/sha}",
+      "svn_url": "https://github.com/kevinjqiu/lumiere"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/jonpither/pipe-seq/git/commits{/sha}",
+      "pushed_at": "2014-01-27T15:34:39Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/jonpither/received_events",
+        "url": "https://api.github.com/users/jonpither",
+        "followers_url": "https://api.github.com/users/jonpither/followers",
+        "avatar_url": "https://avatars3.githubusercontent.com/u/143601?v=3",
+        "subscriptions_url": "https://api.github.com/users/jonpither/subscriptions",
+        "site_admin": false,
+        "id": 143601,
+        "organizations_url": "https://api.github.com/users/jonpither/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/jonpither",
+        "starred_url": "https://api.github.com/users/jonpither/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/jonpither/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/jonpither/repos",
+        "events_url": "https://api.github.com/users/jonpither/events{/privacy}",
+        "login": "jonpither",
+        "gists_url": "https://api.github.com/users/jonpither/gists{/gist_id}"
+      },
+      "score": 3.851786,
+      "url": "https://api.github.com/repos/jonpither/pipe-seq",
+      "contributors_url": "https://api.github.com/repos/jonpither/pipe-seq/contributors",
+      "trees_url": "https://api.github.com/repos/jonpither/pipe-seq/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/jonpither/pipe-seq/deployments",
+      "full_name": "jonpither/pipe-seq",
+      "milestones_url": "https://api.github.com/repos/jonpither/pipe-seq/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/jonpither/pipe-seq/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/jonpither/pipe-seq/tags",
+      "blobs_url": "https://api.github.com/repos/jonpither/pipe-seq/git/blobs{/sha}",
+      "stargazers_count": 3,
+      "ssh_url": "git@github.com:jonpither/pipe-seq.git",
+      "forks": 2,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/jonpither/pipe-seq/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/jonpither/pipe-seq/keys{/key_id}",
+      "id": 9492338,
+      "homepage": null,
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/jonpither/pipe-seq/subscription",
+      "notifications_url": "https://api.github.com/repos/jonpither/pipe-seq/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/jonpither/pipe-seq/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/jonpither/pipe-seq/contents/{+path}",
+      "watchers": 3,
+      "name": "pipe-seq",
+      "compare_url": "https://api.github.com/repos/jonpither/pipe-seq/compare/{base}...{head}",
+      "open_issues": 1,
+      "stargazers_url": "https://api.github.com/repos/jonpither/pipe-seq/stargazers",
+      "has_issues": true,
+      "updated_at": "2014-01-27T15:34:40Z",
+      "git_url": "git://github.com/jonpither/pipe-seq.git",
+      "assignees_url": "https://api.github.com/repos/jonpither/pipe-seq/assignees{/user}",
+      "open_issues_count": 1,
+      "commits_url": "https://api.github.com/repos/jonpither/pipe-seq/commits{/sha}",
+      "html_url": "https://github.com/jonpither/pipe-seq",
+      "labels_url": "https://api.github.com/repos/jonpither/pipe-seq/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/jonpither/pipe-seq/git/refs{/sha}",
+      "forks_count": 2,
+      "issue_events_url": "https://api.github.com/repos/jonpither/pipe-seq/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/jonpither/pipe-seq/languages",
+      "downloads_url": "https://api.github.com/repos/jonpither/pipe-seq/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/jonpither/pipe-seq/comments{/number}",
+      "archive_url": "https://api.github.com/repos/jonpither/pipe-seq/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/jonpither/pipe-seq/events",
+      "watchers_count": 3,
+      "hooks_url": "https://api.github.com/repos/jonpither/pipe-seq/hooks",
+      "created_at": "2013-04-17T07:58:06Z",
+      "teams_url": "https://api.github.com/repos/jonpither/pipe-seq/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 172,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/jonpither/pipe-seq/subscribers",
+      "releases_url": "https://api.github.com/repos/jonpither/pipe-seq/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/jonpither/pipe-seq/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/jonpither/pipe-seq/statuses/{sha}",
+      "clone_url": "https://github.com/jonpither/pipe-seq.git",
+      "forks_url": "https://api.github.com/repos/jonpither/pipe-seq/forks",
+      "issues_url": "https://api.github.com/repos/jonpither/pipe-seq/issues{/number}",
+      "description": "Handy fn for processing a sequence in using an arbitrary sized thread-pool, returns a sequence",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/jonpither/pipe-seq/merges",
+      "git_tags_url": "https://api.github.com/repos/jonpither/pipe-seq/git/tags{/sha}",
+      "svn_url": "https://github.com/jonpither/pipe-seq"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/grav/partistep/git/commits{/sha}",
+      "pushed_at": "2014-11-10T09:20:02Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/grav/received_events",
+        "url": "https://api.github.com/users/grav",
+        "followers_url": "https://api.github.com/users/grav/followers",
+        "avatar_url": "https://avatars0.githubusercontent.com/u/119222?v=3",
+        "subscriptions_url": "https://api.github.com/users/grav/subscriptions",
+        "site_admin": false,
+        "id": 119222,
+        "organizations_url": "https://api.github.com/users/grav/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/grav",
+        "starred_url": "https://api.github.com/users/grav/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/grav/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/grav/repos",
+        "events_url": "https://api.github.com/users/grav/events{/privacy}",
+        "login": "grav",
+        "gists_url": "https://api.github.com/users/grav/gists{/gist_id}"
+      },
+      "score": 3.836685,
+      "url": "https://api.github.com/repos/grav/partistep",
+      "contributors_url": "https://api.github.com/repos/grav/partistep/contributors",
+      "trees_url": "https://api.github.com/repos/grav/partistep/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/grav/partistep/deployments",
+      "full_name": "grav/partistep",
+      "milestones_url": "https://api.github.com/repos/grav/partistep/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/grav/partistep/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/grav/partistep/tags",
+      "blobs_url": "https://api.github.com/repos/grav/partistep/git/blobs{/sha}",
+      "stargazers_count": 6,
+      "ssh_url": "git@github.com:grav/partistep.git",
+      "forks": 0,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/grav/partistep/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/grav/partistep/keys{/key_id}",
+      "id": 15183985,
+      "homepage": null,
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/grav/partistep/subscription",
+      "notifications_url": "https://api.github.com/repos/grav/partistep/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/grav/partistep/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/grav/partistep/contents/{+path}",
+      "watchers": 6,
+      "name": "partistep",
+      "compare_url": "https://api.github.com/repos/grav/partistep/compare/{base}...{head}",
+      "open_issues": 0,
+      "stargazers_url": "https://api.github.com/repos/grav/partistep/stargazers",
+      "has_issues": true,
+      "updated_at": "2014-10-02T04:38:04Z",
+      "git_url": "git://github.com/grav/partistep.git",
+      "assignees_url": "https://api.github.com/repos/grav/partistep/assignees{/user}",
+      "open_issues_count": 0,
+      "commits_url": "https://api.github.com/repos/grav/partistep/commits{/sha}",
+      "html_url": "https://github.com/grav/partistep",
+      "labels_url": "https://api.github.com/repos/grav/partistep/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/grav/partistep/git/refs{/sha}",
+      "forks_count": 0,
+      "issue_events_url": "https://api.github.com/repos/grav/partistep/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/grav/partistep/languages",
+      "downloads_url": "https://api.github.com/repos/grav/partistep/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/grav/partistep/comments{/number}",
+      "archive_url": "https://api.github.com/repos/grav/partistep/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/grav/partistep/events",
+      "watchers_count": 6,
+      "hooks_url": "https://api.github.com/repos/grav/partistep/hooks",
+      "created_at": "2013-12-14T10:37:25Z",
+      "teams_url": "https://api.github.com/repos/grav/partistep/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 216,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/grav/partistep/subscribers",
+      "releases_url": "https://api.github.com/repos/grav/partistep/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/grav/partistep/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/grav/partistep/statuses/{sha}",
+      "clone_url": "https://github.com/grav/partistep.git",
+      "forks_url": "https://api.github.com/repos/grav/partistep/forks",
+      "issues_url": "https://api.github.com/repos/grav/partistep/issues{/number}",
+      "description": "Partial Sequencer in Clojure/Overtone",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/grav/partistep/merges",
+      "git_tags_url": "https://api.github.com/repos/grav/partistep/git/tags{/sha}",
+      "svn_url": "https://github.com/grav/partistep"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/git/commits{/sha}",
+      "pushed_at": "2014-06-21T05:58:12Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/BinaryMuse/received_events",
+        "url": "https://api.github.com/users/BinaryMuse",
+        "followers_url": "https://api.github.com/users/BinaryMuse/followers",
+        "avatar_url": "https://avatars3.githubusercontent.com/u/189606?v=3",
+        "subscriptions_url": "https://api.github.com/users/BinaryMuse/subscriptions",
+        "site_admin": true,
+        "id": 189606,
+        "organizations_url": "https://api.github.com/users/BinaryMuse/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/BinaryMuse",
+        "starred_url": "https://api.github.com/users/BinaryMuse/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/BinaryMuse/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/BinaryMuse/repos",
+        "events_url": "https://api.github.com/users/BinaryMuse/events{/privacy}",
+        "login": "BinaryMuse",
+        "gists_url": "https://api.github.com/users/BinaryMuse/gists{/gist_id}"
+      },
+      "score": 3.53913,
+      "url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence",
+      "contributors_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/contributors",
+      "trees_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/deployments",
+      "full_name": "BinaryMuse/om-dna-sequence",
+      "milestones_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/tags",
+      "blobs_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/git/blobs{/sha}",
+      "stargazers_count": 0,
+      "ssh_url": "git@github.com:BinaryMuse/om-dna-sequence.git",
+      "forks": 1,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/keys{/key_id}",
+      "id": 21061336,
+      "homepage": null,
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/subscription",
+      "notifications_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/contents/{+path}",
+      "watchers": 0,
+      "name": "om-dna-sequence",
+      "compare_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/compare/{base}...{head}",
+      "open_issues": 0,
+      "stargazers_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/stargazers",
+      "has_issues": true,
+      "updated_at": "2014-06-21T05:58:12Z",
+      "git_url": "git://github.com/BinaryMuse/om-dna-sequence.git",
+      "assignees_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/assignees{/user}",
+      "open_issues_count": 0,
+      "commits_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/commits{/sha}",
+      "html_url": "https://github.com/BinaryMuse/om-dna-sequence",
+      "labels_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/git/refs{/sha}",
+      "forks_count": 1,
+      "issue_events_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/languages",
+      "downloads_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/comments{/number}",
+      "archive_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/events",
+      "watchers_count": 0,
+      "hooks_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/hooks",
+      "created_at": "2014-06-21T05:37:20Z",
+      "teams_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 124,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/subscribers",
+      "releases_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/statuses/{sha}",
+      "clone_url": "https://github.com/BinaryMuse/om-dna-sequence.git",
+      "forks_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/forks",
+      "issues_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/issues{/number}",
+      "description": "Om port of https://github.com/davejacobs/cljs-example",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/merges",
+      "git_tags_url": "https://api.github.com/repos/BinaryMuse/om-dna-sequence/git/tags{/sha}",
+      "svn_url": "https://github.com/BinaryMuse/om-dna-sequence"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/pontiff/functionSequencer/git/commits{/sha}",
+      "pushed_at": "2014-03-05T02:35:48Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/pontiff/received_events",
+        "url": "https://api.github.com/users/pontiff",
+        "followers_url": "https://api.github.com/users/pontiff/followers",
+        "avatar_url": "https://avatars1.githubusercontent.com/u/6787482?v=3",
+        "subscriptions_url": "https://api.github.com/users/pontiff/subscriptions",
+        "site_admin": false,
+        "id": 6787482,
+        "organizations_url": "https://api.github.com/users/pontiff/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/pontiff",
+        "starred_url": "https://api.github.com/users/pontiff/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/pontiff/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/pontiff/repos",
+        "events_url": "https://api.github.com/users/pontiff/events{/privacy}",
+        "login": "pontiff",
+        "gists_url": "https://api.github.com/users/pontiff/gists{/gist_id}"
+      },
+      "score": 3.3115053,
+      "url": "https://api.github.com/repos/pontiff/functionSequencer",
+      "contributors_url": "https://api.github.com/repos/pontiff/functionSequencer/contributors",
+      "trees_url": "https://api.github.com/repos/pontiff/functionSequencer/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/pontiff/functionSequencer/deployments",
+      "full_name": "pontiff/functionSequencer",
+      "milestones_url": "https://api.github.com/repos/pontiff/functionSequencer/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/pontiff/functionSequencer/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/pontiff/functionSequencer/tags",
+      "blobs_url": "https://api.github.com/repos/pontiff/functionSequencer/git/blobs{/sha}",
+      "stargazers_count": 0,
+      "ssh_url": "git@github.com:pontiff/functionSequencer.git",
+      "forks": 0,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/pontiff/functionSequencer/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/pontiff/functionSequencer/keys{/key_id}",
+      "id": 17189904,
+      "homepage": null,
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/pontiff/functionSequencer/subscription",
+      "notifications_url": "https://api.github.com/repos/pontiff/functionSequencer/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/pontiff/functionSequencer/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/pontiff/functionSequencer/contents/{+path}",
+      "watchers": 0,
+      "name": "functionSequencer",
+      "compare_url": "https://api.github.com/repos/pontiff/functionSequencer/compare/{base}...{head}",
+      "open_issues": 0,
+      "stargazers_url": "https://api.github.com/repos/pontiff/functionSequencer/stargazers",
+      "has_issues": true,
+      "updated_at": "2014-03-05T02:35:48Z",
+      "git_url": "git://github.com/pontiff/functionSequencer.git",
+      "assignees_url": "https://api.github.com/repos/pontiff/functionSequencer/assignees{/user}",
+      "open_issues_count": 0,
+      "commits_url": "https://api.github.com/repos/pontiff/functionSequencer/commits{/sha}",
+      "html_url": "https://github.com/pontiff/functionSequencer",
+      "labels_url": "https://api.github.com/repos/pontiff/functionSequencer/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/pontiff/functionSequencer/git/refs{/sha}",
+      "forks_count": 0,
+      "issue_events_url": "https://api.github.com/repos/pontiff/functionSequencer/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/pontiff/functionSequencer/languages",
+      "downloads_url": "https://api.github.com/repos/pontiff/functionSequencer/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/pontiff/functionSequencer/comments{/number}",
+      "archive_url": "https://api.github.com/repos/pontiff/functionSequencer/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/pontiff/functionSequencer/events",
+      "watchers_count": 0,
+      "hooks_url": "https://api.github.com/repos/pontiff/functionSequencer/hooks",
+      "created_at": "2014-02-25T22:07:05Z",
+      "teams_url": "https://api.github.com/repos/pontiff/functionSequencer/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 132,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/pontiff/functionSequencer/subscribers",
+      "releases_url": "https://api.github.com/repos/pontiff/functionSequencer/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/pontiff/functionSequencer/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/pontiff/functionSequencer/statuses/{sha}",
+      "clone_url": "https://github.com/pontiff/functionSequencer.git",
+      "forks_url": "https://api.github.com/repos/pontiff/functionSequencer/forks",
+      "issues_url": "https://api.github.com/repos/pontiff/functionSequencer/issues{/number}",
+      "description": "a tool to assist stateful programming on a timeline",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/pontiff/functionSequencer/merges",
+      "git_tags_url": "https://api.github.com/repos/pontiff/functionSequencer/git/tags{/sha}",
+      "svn_url": "https://github.com/pontiff/functionSequencer"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/git/commits{/sha}",
+      "pushed_at": "2016-03-28T15:55:08Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/kfirmanty/received_events",
+        "url": "https://api.github.com/users/kfirmanty",
+        "followers_url": "https://api.github.com/users/kfirmanty/followers",
+        "avatar_url": "https://avatars0.githubusercontent.com/u/3720137?v=3",
+        "subscriptions_url": "https://api.github.com/users/kfirmanty/subscriptions",
+        "site_admin": false,
+        "id": 3720137,
+        "organizations_url": "https://api.github.com/users/kfirmanty/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/kfirmanty",
+        "starred_url": "https://api.github.com/users/kfirmanty/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/kfirmanty/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/kfirmanty/repos",
+        "events_url": "https://api.github.com/users/kfirmanty/events{/privacy}",
+        "login": "kfirmanty",
+        "gists_url": "https://api.github.com/users/kfirmanty/gists{/gist_id}"
+      },
+      "score": 3.3115053,
+      "url": "https://api.github.com/repos/kfirmanty/midi-sequencer",
+      "contributors_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/contributors",
+      "trees_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/deployments",
+      "full_name": "kfirmanty/midi-sequencer",
+      "milestones_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/tags",
+      "blobs_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/git/blobs{/sha}",
+      "stargazers_count": 0,
+      "ssh_url": "git@github.com:kfirmanty/midi-sequencer.git",
+      "forks": 0,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/keys{/key_id}",
+      "id": 49456255,
+      "homepage": null,
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/subscription",
+      "notifications_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/contents/{+path}",
+      "watchers": 0,
+      "name": "midi-sequencer",
+      "compare_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/compare/{base}...{head}",
+      "open_issues": 0,
+      "stargazers_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/stargazers",
+      "has_issues": true,
+      "updated_at": "2016-01-11T21:45:26Z",
+      "git_url": "git://github.com/kfirmanty/midi-sequencer.git",
+      "assignees_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/assignees{/user}",
+      "open_issues_count": 0,
+      "commits_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/commits{/sha}",
+      "html_url": "https://github.com/kfirmanty/midi-sequencer",
+      "labels_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/git/refs{/sha}",
+      "forks_count": 0,
+      "issue_events_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/languages",
+      "downloads_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/comments{/number}",
+      "archive_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/events",
+      "watchers_count": 0,
+      "hooks_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/hooks",
+      "created_at": "2016-01-11T21:41:44Z",
+      "teams_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 4,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/subscribers",
+      "releases_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/statuses/{sha}",
+      "clone_url": "https://github.com/kfirmanty/midi-sequencer.git",
+      "forks_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/forks",
+      "issues_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/issues{/number}",
+      "description": null,
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/merges",
+      "git_tags_url": "https://api.github.com/repos/kfirmanty/midi-sequencer/git/tags{/sha}",
+      "svn_url": "https://github.com/kfirmanty/midi-sequencer"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/mccraigmccraig/qseq/git/commits{/sha}",
+      "pushed_at": "2014-12-03T11:53:45Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/mccraigmccraig/received_events",
+        "url": "https://api.github.com/users/mccraigmccraig",
+        "followers_url": "https://api.github.com/users/mccraigmccraig/followers",
+        "avatar_url": "https://avatars2.githubusercontent.com/u/29339?v=3",
+        "subscriptions_url": "https://api.github.com/users/mccraigmccraig/subscriptions",
+        "site_admin": false,
+        "id": 29339,
+        "organizations_url": "https://api.github.com/users/mccraigmccraig/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/mccraigmccraig",
+        "starred_url": "https://api.github.com/users/mccraigmccraig/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/mccraigmccraig/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/mccraigmccraig/repos",
+        "events_url": "https://api.github.com/users/mccraigmccraig/events{/privacy}",
+        "login": "mccraigmccraig",
+        "gists_url": "https://api.github.com/users/mccraigmccraig/gists{/gist_id}"
+      },
+      "score": 3.3076158,
+      "url": "https://api.github.com/repos/mccraigmccraig/qseq",
+      "contributors_url": "https://api.github.com/repos/mccraigmccraig/qseq/contributors",
+      "trees_url": "https://api.github.com/repos/mccraigmccraig/qseq/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/mccraigmccraig/qseq/deployments",
+      "full_name": "mccraigmccraig/qseq",
+      "milestones_url": "https://api.github.com/repos/mccraigmccraig/qseq/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/mccraigmccraig/qseq/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/mccraigmccraig/qseq/tags",
+      "blobs_url": "https://api.github.com/repos/mccraigmccraig/qseq/git/blobs{/sha}",
+      "stargazers_count": 14,
+      "ssh_url": "git@github.com:mccraigmccraig/qseq.git",
+      "forks": 0,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/mccraigmccraig/qseq/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/mccraigmccraig/qseq/keys{/key_id}",
+      "id": 5133127,
+      "homepage": "",
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/mccraigmccraig/qseq/subscription",
+      "notifications_url": "https://api.github.com/repos/mccraigmccraig/qseq/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/mccraigmccraig/qseq/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/mccraigmccraig/qseq/contents/{+path}",
+      "watchers": 14,
+      "name": "qseq",
+      "compare_url": "https://api.github.com/repos/mccraigmccraig/qseq/compare/{base}...{head}",
+      "open_issues": 1,
+      "stargazers_url": "https://api.github.com/repos/mccraigmccraig/qseq/stargazers",
+      "has_issues": true,
+      "updated_at": "2016-12-19T10:42:56Z",
+      "git_url": "git://github.com/mccraigmccraig/qseq.git",
+      "assignees_url": "https://api.github.com/repos/mccraigmccraig/qseq/assignees{/user}",
+      "open_issues_count": 1,
+      "commits_url": "https://api.github.com/repos/mccraigmccraig/qseq/commits{/sha}",
+      "html_url": "https://github.com/mccraigmccraig/qseq",
+      "labels_url": "https://api.github.com/repos/mccraigmccraig/qseq/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/mccraigmccraig/qseq/git/refs{/sha}",
+      "forks_count": 0,
+      "issue_events_url": "https://api.github.com/repos/mccraigmccraig/qseq/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/mccraigmccraig/qseq/languages",
+      "downloads_url": "https://api.github.com/repos/mccraigmccraig/qseq/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/mccraigmccraig/qseq/comments{/number}",
+      "archive_url": "https://api.github.com/repos/mccraigmccraig/qseq/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/mccraigmccraig/qseq/events",
+      "watchers_count": 14,
+      "hooks_url": "https://api.github.com/repos/mccraigmccraig/qseq/hooks",
+      "created_at": "2012-07-21T11:27:58Z",
+      "teams_url": "https://api.github.com/repos/mccraigmccraig/qseq/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 316,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/mccraigmccraig/qseq/subscribers",
+      "releases_url": "https://api.github.com/repos/mccraigmccraig/qseq/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/mccraigmccraig/qseq/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/mccraigmccraig/qseq/statuses/{sha}",
+      "clone_url": "https://github.com/mccraigmccraig/qseq.git",
+      "forks_url": "https://api.github.com/repos/mccraigmccraig/qseq/forks",
+      "issues_url": "https://api.github.com/repos/mccraigmccraig/qseq/issues{/number}",
+      "description": "a lazy sequence over Korma and ClojureQL queries",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/mccraigmccraig/qseq/merges",
+      "git_tags_url": "https://api.github.com/repos/mccraigmccraig/qseq/git/tags{/sha}",
+      "svn_url": "https://github.com/mccraigmccraig/qseq"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/hmetaute/clojure-sequences/git/commits{/sha}",
+      "pushed_at": "2016-06-01T21:13:02Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/hmetaute/received_events",
+        "url": "https://api.github.com/users/hmetaute",
+        "followers_url": "https://api.github.com/users/hmetaute/followers",
+        "avatar_url": "https://avatars0.githubusercontent.com/u/105320?v=3",
+        "subscriptions_url": "https://api.github.com/users/hmetaute/subscriptions",
+        "site_admin": false,
+        "id": 105320,
+        "organizations_url": "https://api.github.com/users/hmetaute/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/hmetaute",
+        "starred_url": "https://api.github.com/users/hmetaute/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/hmetaute/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/hmetaute/repos",
+        "events_url": "https://api.github.com/users/hmetaute/events{/privacy}",
+        "login": "hmetaute",
+        "gists_url": "https://api.github.com/users/hmetaute/gists{/gist_id}"
+      },
+      "score": 3.2967236,
+      "url": "https://api.github.com/repos/hmetaute/clojure-sequences",
+      "contributors_url": "https://api.github.com/repos/hmetaute/clojure-sequences/contributors",
+      "trees_url": "https://api.github.com/repos/hmetaute/clojure-sequences/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/hmetaute/clojure-sequences/deployments",
+      "full_name": "hmetaute/clojure-sequences",
+      "milestones_url": "https://api.github.com/repos/hmetaute/clojure-sequences/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/hmetaute/clojure-sequences/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/hmetaute/clojure-sequences/tags",
+      "blobs_url": "https://api.github.com/repos/hmetaute/clojure-sequences/git/blobs{/sha}",
+      "stargazers_count": 0,
+      "ssh_url": "git@github.com:hmetaute/clojure-sequences.git",
+      "forks": 0,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/hmetaute/clojure-sequences/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/hmetaute/clojure-sequences/keys{/key_id}",
+      "id": 60210790,
+      "homepage": null,
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/hmetaute/clojure-sequences/subscription",
+      "notifications_url": "https://api.github.com/repos/hmetaute/clojure-sequences/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/hmetaute/clojure-sequences/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/hmetaute/clojure-sequences/contents/{+path}",
+      "watchers": 0,
+      "name": "clojure-sequences",
+      "compare_url": "https://api.github.com/repos/hmetaute/clojure-sequences/compare/{base}...{head}",
+      "open_issues": 0,
+      "stargazers_url": "https://api.github.com/repos/hmetaute/clojure-sequences/stargazers",
+      "has_issues": true,
+      "updated_at": "2016-06-01T21:08:52Z",
+      "git_url": "git://github.com/hmetaute/clojure-sequences.git",
+      "assignees_url": "https://api.github.com/repos/hmetaute/clojure-sequences/assignees{/user}",
+      "open_issues_count": 0,
+      "commits_url": "https://api.github.com/repos/hmetaute/clojure-sequences/commits{/sha}",
+      "html_url": "https://github.com/hmetaute/clojure-sequences",
+      "labels_url": "https://api.github.com/repos/hmetaute/clojure-sequences/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/hmetaute/clojure-sequences/git/refs{/sha}",
+      "forks_count": 0,
+      "issue_events_url": "https://api.github.com/repos/hmetaute/clojure-sequences/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/hmetaute/clojure-sequences/languages",
+      "downloads_url": "https://api.github.com/repos/hmetaute/clojure-sequences/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/hmetaute/clojure-sequences/comments{/number}",
+      "archive_url": "https://api.github.com/repos/hmetaute/clojure-sequences/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/hmetaute/clojure-sequences/events",
+      "watchers_count": 0,
+      "hooks_url": "https://api.github.com/repos/hmetaute/clojure-sequences/hooks",
+      "created_at": "2016-06-01T21:05:45Z",
+      "teams_url": "https://api.github.com/repos/hmetaute/clojure-sequences/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 7,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/hmetaute/clojure-sequences/subscribers",
+      "releases_url": "https://api.github.com/repos/hmetaute/clojure-sequences/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/hmetaute/clojure-sequences/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/hmetaute/clojure-sequences/statuses/{sha}",
+      "clone_url": "https://github.com/hmetaute/clojure-sequences.git",
+      "forks_url": "https://api.github.com/repos/hmetaute/clojure-sequences/forks",
+      "issues_url": "https://api.github.com/repos/hmetaute/clojure-sequences/issues{/number}",
+      "description": "Presentation for coljure 2016 on clojure sequences",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/hmetaute/clojure-sequences/merges",
+      "git_tags_url": "https://api.github.com/repos/hmetaute/clojure-sequences/git/tags{/sha}",
+      "svn_url": "https://github.com/hmetaute/clojure-sequences"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/cassiel/cell-sequencer/git/commits{/sha}",
+      "pushed_at": "2012-06-03T22:35:47Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/cassiel/received_events",
+        "url": "https://api.github.com/users/cassiel",
+        "followers_url": "https://api.github.com/users/cassiel/followers",
+        "avatar_url": "https://avatars2.githubusercontent.com/u/658505?v=3",
+        "subscriptions_url": "https://api.github.com/users/cassiel/subscriptions",
+        "site_admin": false,
+        "id": 658505,
+        "organizations_url": "https://api.github.com/users/cassiel/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/cassiel",
+        "starred_url": "https://api.github.com/users/cassiel/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/cassiel/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/cassiel/repos",
+        "events_url": "https://api.github.com/users/cassiel/events{/privacy}",
+        "login": "cassiel",
+        "gists_url": "https://api.github.com/users/cassiel/gists{/gist_id}"
+      },
+      "score": 3.2936053,
+      "url": "https://api.github.com/repos/cassiel/cell-sequencer",
+      "contributors_url": "https://api.github.com/repos/cassiel/cell-sequencer/contributors",
+      "trees_url": "https://api.github.com/repos/cassiel/cell-sequencer/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/cassiel/cell-sequencer/deployments",
+      "full_name": "cassiel/cell-sequencer",
+      "milestones_url": "https://api.github.com/repos/cassiel/cell-sequencer/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/cassiel/cell-sequencer/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/cassiel/cell-sequencer/tags",
+      "blobs_url": "https://api.github.com/repos/cassiel/cell-sequencer/git/blobs{/sha}",
+      "stargazers_count": 1,
+      "ssh_url": "git@github.com:cassiel/cell-sequencer.git",
+      "forks": 1,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/cassiel/cell-sequencer/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/cassiel/cell-sequencer/keys{/key_id}",
+      "id": 4539668,
+      "homepage": null,
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/cassiel/cell-sequencer/subscription",
+      "notifications_url": "https://api.github.com/repos/cassiel/cell-sequencer/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/cassiel/cell-sequencer/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/cassiel/cell-sequencer/contents/{+path}",
+      "watchers": 1,
+      "name": "cell-sequencer",
+      "compare_url": "https://api.github.com/repos/cassiel/cell-sequencer/compare/{base}...{head}",
+      "open_issues": 0,
+      "stargazers_url": "https://api.github.com/repos/cassiel/cell-sequencer/stargazers",
+      "has_issues": true,
+      "updated_at": "2013-10-07T12:43:38Z",
+      "git_url": "git://github.com/cassiel/cell-sequencer.git",
+      "assignees_url": "https://api.github.com/repos/cassiel/cell-sequencer/assignees{/user}",
+      "open_issues_count": 0,
+      "commits_url": "https://api.github.com/repos/cassiel/cell-sequencer/commits{/sha}",
+      "html_url": "https://github.com/cassiel/cell-sequencer",
+      "labels_url": "https://api.github.com/repos/cassiel/cell-sequencer/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/cassiel/cell-sequencer/git/refs{/sha}",
+      "forks_count": 1,
+      "issue_events_url": "https://api.github.com/repos/cassiel/cell-sequencer/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/cassiel/cell-sequencer/languages",
+      "downloads_url": "https://api.github.com/repos/cassiel/cell-sequencer/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/cassiel/cell-sequencer/comments{/number}",
+      "archive_url": "https://api.github.com/repos/cassiel/cell-sequencer/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/cassiel/cell-sequencer/events",
+      "watchers_count": 1,
+      "hooks_url": "https://api.github.com/repos/cassiel/cell-sequencer/hooks",
+      "created_at": "2012-06-03T18:49:15Z",
+      "teams_url": "https://api.github.com/repos/cassiel/cell-sequencer/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 96,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/cassiel/cell-sequencer/subscribers",
+      "releases_url": "https://api.github.com/repos/cassiel/cell-sequencer/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/cassiel/cell-sequencer/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/cassiel/cell-sequencer/statuses/{sha}",
+      "clone_url": "https://github.com/cassiel/cell-sequencer.git",
+      "forks_url": "https://api.github.com/repos/cassiel/cell-sequencer/forks",
+      "issues_url": "https://api.github.com/repos/cassiel/cell-sequencer/issues{/number}",
+      "description": null,
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/cassiel/cell-sequencer/merges",
+      "git_tags_url": "https://api.github.com/repos/cassiel/cell-sequencer/git/tags{/sha}",
+      "svn_url": "https://github.com/cassiel/cell-sequencer"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/themistoklik/frequent-sequences/git/commits{/sha}",
+      "pushed_at": "2017-03-13T21:54:05Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/themistoklik/received_events",
+        "url": "https://api.github.com/users/themistoklik",
+        "followers_url": "https://api.github.com/users/themistoklik/followers",
+        "avatar_url": "https://avatars0.githubusercontent.com/u/6051814?v=3",
+        "subscriptions_url": "https://api.github.com/users/themistoklik/subscriptions",
+        "site_admin": false,
+        "id": 6051814,
+        "organizations_url": "https://api.github.com/users/themistoklik/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/themistoklik",
+        "starred_url": "https://api.github.com/users/themistoklik/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/themistoklik/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/themistoklik/repos",
+        "events_url": "https://api.github.com/users/themistoklik/events{/privacy}",
+        "login": "themistoklik",
+        "gists_url": "https://api.github.com/users/themistoklik/gists{/gist_id}"
+      },
+      "score": 3.2936053,
+      "url": "https://api.github.com/repos/themistoklik/frequent-sequences",
+      "contributors_url": "https://api.github.com/repos/themistoklik/frequent-sequences/contributors",
+      "trees_url": "https://api.github.com/repos/themistoklik/frequent-sequences/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/themistoklik/frequent-sequences/deployments",
+      "full_name": "themistoklik/frequent-sequences",
+      "milestones_url": "https://api.github.com/repos/themistoklik/frequent-sequences/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/themistoklik/frequent-sequences/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/themistoklik/frequent-sequences/tags",
+      "blobs_url": "https://api.github.com/repos/themistoklik/frequent-sequences/git/blobs{/sha}",
+      "stargazers_count": 0,
+      "ssh_url": "git@github.com:themistoklik/frequent-sequences.git",
+      "forks": 0,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/themistoklik/frequent-sequences/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/themistoklik/frequent-sequences/keys{/key_id}",
+      "id": 84734525,
+      "homepage": null,
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/themistoklik/frequent-sequences/subscription",
+      "notifications_url": "https://api.github.com/repos/themistoklik/frequent-sequences/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/themistoklik/frequent-sequences/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/themistoklik/frequent-sequences/contents/{+path}",
+      "watchers": 0,
+      "name": "frequent-sequences",
+      "compare_url": "https://api.github.com/repos/themistoklik/frequent-sequences/compare/{base}...{head}",
+      "open_issues": 0,
+      "stargazers_url": "https://api.github.com/repos/themistoklik/frequent-sequences/stargazers",
+      "has_issues": true,
+      "updated_at": "2017-03-12T21:17:54Z",
+      "git_url": "git://github.com/themistoklik/frequent-sequences.git",
+      "assignees_url": "https://api.github.com/repos/themistoklik/frequent-sequences/assignees{/user}",
+      "open_issues_count": 0,
+      "commits_url": "https://api.github.com/repos/themistoklik/frequent-sequences/commits{/sha}",
+      "html_url": "https://github.com/themistoklik/frequent-sequences",
+      "labels_url": "https://api.github.com/repos/themistoklik/frequent-sequences/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/themistoklik/frequent-sequences/git/refs{/sha}",
+      "forks_count": 0,
+      "issue_events_url": "https://api.github.com/repos/themistoklik/frequent-sequences/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/themistoklik/frequent-sequences/languages",
+      "downloads_url": "https://api.github.com/repos/themistoklik/frequent-sequences/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/themistoklik/frequent-sequences/comments{/number}",
+      "archive_url": "https://api.github.com/repos/themistoklik/frequent-sequences/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/themistoklik/frequent-sequences/events",
+      "watchers_count": 0,
+      "hooks_url": "https://api.github.com/repos/themistoklik/frequent-sequences/hooks",
+      "created_at": "2017-03-12T15:05:25Z",
+      "teams_url": "https://api.github.com/repos/themistoklik/frequent-sequences/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 2,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/themistoklik/frequent-sequences/subscribers",
+      "releases_url": "https://api.github.com/repos/themistoklik/frequent-sequences/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/themistoklik/frequent-sequences/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/themistoklik/frequent-sequences/statuses/{sha}",
+      "clone_url": "https://github.com/themistoklik/frequent-sequences.git",
+      "forks_url": "https://api.github.com/repos/themistoklik/frequent-sequences/forks",
+      "issues_url": "https://api.github.com/repos/themistoklik/frequent-sequences/issues{/number}",
+      "description": "A frequent sequences enumeration algorithm in Clojure.",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/themistoklik/frequent-sequences/merges",
+      "git_tags_url": "https://api.github.com/repos/themistoklik/frequent-sequences/git/tags{/sha}",
+      "svn_url": "https://github.com/themistoklik/frequent-sequences"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/jellea/nanol33t/git/commits{/sha}",
+      "pushed_at": "2015-09-26T16:01:36Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/jellea/received_events",
+        "url": "https://api.github.com/users/jellea",
+        "followers_url": "https://api.github.com/users/jellea/followers",
+        "avatar_url": "https://avatars0.githubusercontent.com/u/902679?v=3",
+        "subscriptions_url": "https://api.github.com/users/jellea/subscriptions",
+        "site_admin": false,
+        "id": 902679,
+        "organizations_url": "https://api.github.com/users/jellea/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/jellea",
+        "starred_url": "https://api.github.com/users/jellea/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/jellea/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/jellea/repos",
+        "events_url": "https://api.github.com/users/jellea/events{/privacy}",
+        "login": "jellea",
+        "gists_url": "https://api.github.com/users/jellea/gists{/gist_id}"
+      },
+      "score": 3.1871579,
+      "url": "https://api.github.com/repos/jellea/nanol33t",
+      "contributors_url": "https://api.github.com/repos/jellea/nanol33t/contributors",
+      "trees_url": "https://api.github.com/repos/jellea/nanol33t/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/jellea/nanol33t/deployments",
+      "full_name": "jellea/nanol33t",
+      "milestones_url": "https://api.github.com/repos/jellea/nanol33t/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/jellea/nanol33t/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/jellea/nanol33t/tags",
+      "blobs_url": "https://api.github.com/repos/jellea/nanol33t/git/blobs{/sha}",
+      "stargazers_count": 3,
+      "ssh_url": "git@github.com:jellea/nanol33t.git",
+      "forks": 2,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/jellea/nanol33t/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/jellea/nanol33t/keys{/key_id}",
+      "id": 43200980,
+      "homepage": "",
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/jellea/nanol33t/subscription",
+      "notifications_url": "https://api.github.com/repos/jellea/nanol33t/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/jellea/nanol33t/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/jellea/nanol33t/contents/{+path}",
+      "watchers": 3,
+      "name": "nanol33t",
+      "compare_url": "https://api.github.com/repos/jellea/nanol33t/compare/{base}...{head}",
+      "open_issues": 0,
+      "stargazers_url": "https://api.github.com/repos/jellea/nanol33t/stargazers",
+      "has_issues": true,
+      "updated_at": "2017-01-29T09:34:43Z",
+      "git_url": "git://github.com/jellea/nanol33t.git",
+      "assignees_url": "https://api.github.com/repos/jellea/nanol33t/assignees{/user}",
+      "open_issues_count": 0,
+      "commits_url": "https://api.github.com/repos/jellea/nanol33t/commits{/sha}",
+      "html_url": "https://github.com/jellea/nanol33t",
+      "labels_url": "https://api.github.com/repos/jellea/nanol33t/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/jellea/nanol33t/git/refs{/sha}",
+      "forks_count": 2,
+      "issue_events_url": "https://api.github.com/repos/jellea/nanol33t/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/jellea/nanol33t/languages",
+      "downloads_url": "https://api.github.com/repos/jellea/nanol33t/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/jellea/nanol33t/comments{/number}",
+      "archive_url": "https://api.github.com/repos/jellea/nanol33t/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/jellea/nanol33t/events",
+      "watchers_count": 3,
+      "hooks_url": "https://api.github.com/repos/jellea/nanol33t/hooks",
+      "created_at": "2015-09-26T10:11:01Z",
+      "teams_url": "https://api.github.com/repos/jellea/nanol33t/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 144,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/jellea/nanol33t/subscribers",
+      "releases_url": "https://api.github.com/repos/jellea/nanol33t/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/jellea/nanol33t/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/jellea/nanol33t/statuses/{sha}",
+      "clone_url": "https://github.com/jellea/nanol33t.git",
+      "forks_url": "https://api.github.com/repos/jellea/nanol33t/forks",
+      "issues_url": "https://api.github.com/repos/jellea/nanol33t/issues{/number}",
+      "description": "Nanoloop's sequencer with webmidi :)",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/jellea/nanol33t/merges",
+      "git_tags_url": "https://api.github.com/repos/jellea/nanol33t/git/tags{/sha}",
+      "svn_url": "https://github.com/jellea/nanol33t"
+    },
+    {
+      "git_commits_url": "https://api.github.com/repos/jdevuyst/kripke/git/commits{/sha}",
+      "pushed_at": "2015-04-08T15:38:30Z",
+      "owner": {
+        "received_events_url": "https://api.github.com/users/jdevuyst/received_events",
+        "url": "https://api.github.com/users/jdevuyst",
+        "followers_url": "https://api.github.com/users/jdevuyst/followers",
+        "avatar_url": "https://avatars3.githubusercontent.com/u/4509979?v=3",
+        "subscriptions_url": "https://api.github.com/users/jdevuyst/subscriptions",
+        "site_admin": false,
+        "id": 4509979,
+        "organizations_url": "https://api.github.com/users/jdevuyst/orgs",
+        "gravatar_id": "",
+        "html_url": "https://github.com/jdevuyst",
+        "starred_url": "https://api.github.com/users/jdevuyst/starred{/owner}{/repo}",
+        "following_url": "https://api.github.com/users/jdevuyst/following{/other_user}",
+        "type": "User",
+        "repos_url": "https://api.github.com/users/jdevuyst/repos",
+        "events_url": "https://api.github.com/users/jdevuyst/events{/privacy}",
+        "login": "jdevuyst",
+        "gists_url": "https://api.github.com/users/jdevuyst/gists{/gist_id}"
+      },
+      "score": 3.0118814,
+      "url": "https://api.github.com/repos/jdevuyst/kripke",
+      "contributors_url": "https://api.github.com/repos/jdevuyst/kripke/contributors",
+      "trees_url": "https://api.github.com/repos/jdevuyst/kripke/git/trees{/sha}",
+      "deployments_url": "https://api.github.com/repos/jdevuyst/kripke/deployments",
+      "full_name": "jdevuyst/kripke",
+      "milestones_url": "https://api.github.com/repos/jdevuyst/kripke/milestones{/number}",
+      "issue_comment_url": "https://api.github.com/repos/jdevuyst/kripke/issues/comments{/number}",
+      "tags_url": "https://api.github.com/repos/jdevuyst/kripke/tags",
+      "blobs_url": "https://api.github.com/repos/jdevuyst/kripke/git/blobs{/sha}",
+      "stargazers_count": 9,
+      "ssh_url": "git@github.com:jdevuyst/kripke.git",
+      "forks": 0,
+      "has_pages": false,
+      "private": false,
+      "pulls_url": "https://api.github.com/repos/jdevuyst/kripke/pulls{/number}",
+      "keys_url": "https://api.github.com/repos/jdevuyst/kripke/keys{/key_id}",
+      "id": 33479987,
+      "homepage": "",
+      "has_projects": true,
+      "subscription_url": "https://api.github.com/repos/jdevuyst/kripke/subscription",
+      "notifications_url": "https://api.github.com/repos/jdevuyst/kripke/notifications{?since,all,participating}",
+      "collaborators_url": "https://api.github.com/repos/jdevuyst/kripke/collaborators{/collaborator}",
+      "contents_url": "https://api.github.com/repos/jdevuyst/kripke/contents/{+path}",
+      "watchers": 9,
+      "name": "kripke",
+      "compare_url": "https://api.github.com/repos/jdevuyst/kripke/compare/{base}...{head}",
+      "open_issues": 0,
+      "stargazers_url": "https://api.github.com/repos/jdevuyst/kripke/stargazers",
+      "has_issues": true,
+      "updated_at": "2017-02-27T12:38:07Z",
+      "git_url": "git://github.com/jdevuyst/kripke.git",
+      "assignees_url": "https://api.github.com/repos/jdevuyst/kripke/assignees{/user}",
+      "open_issues_count": 0,
+      "commits_url": "https://api.github.com/repos/jdevuyst/kripke/commits{/sha}",
+      "html_url": "https://github.com/jdevuyst/kripke",
+      "labels_url": "https://api.github.com/repos/jdevuyst/kripke/labels{/name}",
+      "git_refs_url": "https://api.github.com/repos/jdevuyst/kripke/git/refs{/sha}",
+      "forks_count": 0,
+      "issue_events_url": "https://api.github.com/repos/jdevuyst/kripke/issues/events{/number}",
+      "languages_url": "https://api.github.com/repos/jdevuyst/kripke/languages",
+      "downloads_url": "https://api.github.com/repos/jdevuyst/kripke/downloads",
+      "mirror_url": null,
+      "comments_url": "https://api.github.com/repos/jdevuyst/kripke/comments{/number}",
+      "archive_url": "https://api.github.com/repos/jdevuyst/kripke/{archive_format}{/ref}",
+      "events_url": "https://api.github.com/repos/jdevuyst/kripke/events",
+      "watchers_count": 9,
+      "hooks_url": "https://api.github.com/repos/jdevuyst/kripke/hooks",
+      "created_at": "2015-04-06T12:02:36Z",
+      "teams_url": "https://api.github.com/repos/jdevuyst/kripke/teams",
+      "has_wiki": true,
+      "has_downloads": true,
+      "size": 148,
+      "fork": false,
+      "subscribers_url": "https://api.github.com/repos/jdevuyst/kripke/subscribers",
+      "releases_url": "https://api.github.com/repos/jdevuyst/kripke/releases{/id}",
+      "language": "Clojure",
+      "branches_url": "https://api.github.com/repos/jdevuyst/kripke/branches{/branch}",
+      "statuses_url": "https://api.github.com/repos/jdevuyst/kripke/statuses/{sha}",
+      "clone_url": "https://github.com/jdevuyst/kripke.git",
+      "forks_url": "https://api.github.com/repos/jdevuyst/kripke/forks",
+      "issues_url": "https://api.github.com/repos/jdevuyst/kripke/issues{/number}",
+      "description": "Clojure library for constructing and manipulating sequences of similar structures",
+      "default_branch": "master",
+      "merges_url": "https://api.github.com/repos/jdevuyst/kripke/merges",
+      "git_tags_url": "https://api.github.com/repos/jdevuyst/kripke/git/tags{/sha}",
+      "svn_url": "https://github.com/jdevuyst/kripke"
+    }
+  ]
+}
 #+END_SRC
