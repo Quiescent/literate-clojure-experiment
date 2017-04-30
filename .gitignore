@@ -38,3 +38,6 @@ build/
 
 # Tangled Source
 src/project_catalog/*.clj
+
+# Editor files/direcotries
+.predictive/
