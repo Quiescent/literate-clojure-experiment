@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Tangling Parentheses from Prose</title>
+<meta name="author" content="(Edward John Steere)"/>
+<style type="text/css">
+.underline { text-decoration: underline; }
+</style>
+<link rel="stylesheet" href="reveal.js/css/reveal.css"/>
+
+<link rel="stylesheet" href="reveal.js/css/theme/sky.css" id="theme"/>
+
+
+<!-- If the query includes 'print-pdf', include the PDF print sheet -->
+<script>
+    if( window.location.search.match( /print-pdf/gi ) ) {
+        var link = document.createElement( 'link' );
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = 'reveal.js/css/print/pdf.css';
+        document.getElementsByTagName( 'head' )[0].appendChild( link );
+    }
+</script>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+<section id="sec-title-slide" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition=""><h1 class="title">Tangling Parentheses from Prose</h1><h2 class="author">Edward John Steere</h2><h2 class="date">2017-05-06 Sat 00:00</h2><p class="date">Created: 2017-05-06 Sat 12:23</p>
+</section>
+
+<section id="slide-org982ad8a" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h2 id="org982ad8a">Story Time</h2>
+<iframe width="835" height="480" src="https://www.youtube.com/embed/Av0PQDVTP4A?rel=0#t=0m56s" frameborder="0" allowfullscreen></iframe>
+<div class="slide-footer"></div>
+</section>
+<section id="slide-org139517c" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h2 id="org139517c">What is Literate Programming</h2>
+<aside class="notes">
+<p>
+We Try to Write Code Which Reads Well
+</p>
+
+</aside>
+<div class="slide-footer"></div>
+</section>
+<section id="slide-orgebeff9c" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h2 id="orgebeff9c">What is Literate Programming</h2>
+<aside class="notes">
+<p>
+In Clojure We Generally Succeed
+</p>
+
+</aside>
+<div class="slide-footer"></div>
+</section>
+<section id="slide-org7e74db1" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h2 id="org7e74db1">What is Literate Programming</h2>
+<aside class="notes">
+<p>
+Can You Tell me Why this Code Was Written
+</p>
+
+</aside>
+<p>
+(perhaps take some code from a core library?)
+</p>
+<div class="slide-footer"></div>
+</section>
+<section id="slide-org90feb10" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h3 id="org90feb10">Telling a Computer What to do in an English Like Style Sucks</h3>
+<p>
+(put up some Java code?)
+(put up some Delphi code?)
+(put up some Cobol code?)
+</p>
+<div class="slide-footer"></div>
+</section>
+<section id="slide-org969ed86" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h3 id="org969ed86">Telling a Human How to do Something with Code Also Sucks</h3>
+<p>
+(tell a gardener to clean the garden with map)
+(tell a friend to get coffee nearby with reduce)
+(tell your family about your overseas trip with filter)
+</p>
+<div class="slide-footer"></div>
+</section>
+<section id="slide-org8a1579e" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h3 id="org8a1579e">Natural Language + Code = Mind Blown</h3>
+<div class="slide-footer"></div>
+</section>
+<section id="slide-org3698cd2" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h3 id="org3698cd2">You Might Be Thinking of Docstrings</h3>
+<div class="slide-footer"></div>
+</section>
+<section id="slide-orgd949aba" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h3 id="orgd949aba">You Are Wrong! &#x2013; Who Understands EJBs by Reading the Doc</h3>
+
+<div class="slide-footer"></div>
+</section>
+<section id="slide-org9615758" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h3 id="org9615758">Idea is Simpler</h3>
+<div class="slide-footer"></div>
+</section>
+<section id="slide-org93d989c" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h3 id="org93d989c">Talk About the Idea and Sprinkle in Some Code When Needed</h3>
+<div class="slide-footer"></div>
+</section>
+<section id="slide-org307aa79" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h3 id="org307aa79">Two Principles: Tangle and Weave</h3>
+<div class="slide-footer"></div>
+</section>
+<section id="slide-orga63a105" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h2 id="orga63a105">Demo Some Clojure Literate Programming</h2>
+<div class="outline-text-2" id="text-orga63a105">
+</div><div class="slide-footer"></div>
+</section>
+<section id="slide-org81e52d1" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h3 id="org81e52d1">Day 24 (Need to Translate)</h3>
+<div class="slide-footer"></div>
+</section>
+<section id="slide-orgb348ee1" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h3 id="orgb348ee1">Zoom in and Explain Some Functions</h3>
+<div class="slide-footer"></div>
+</section>
+<section id="slide-org0eba59b" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h3 id="org0eba59b">Why Did I Do it This Way (What did Ed of Last Year See?!)</h3>
+<div class="slide-footer"></div>
+</section>
+<section id="slide-org651f9d8" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h3 id="org651f9d8">Literate Version (Core Idea First)</h3>
+<div class="slide-footer"></div>
+</section>
+<section id="slide-org4189964" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h2 id="org4189964">Show them the Micro Service Code</h2>
+<div class="outline-text-2" id="text-org4189964">
+</div><div class="slide-footer"></div>
+</section>
+<section id="slide-org2d88ba4" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h3 id="org2d88ba4">Searching for Parts of the System</h3>
+<div class="slide-footer"></div>
+</section>
+<section id="slide-org6e23529" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h3 id="org6e23529">Reading the Description and Stuff</h3>
+<div class="slide-footer"></div>
+</section>
+<section id="slide-org5adb3df" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h3 id="org5adb3df">Update a Route to Greet Everyone at the Meetup</h3>
+<div class="slide-footer"></div>
+</section>
+<section id="slide-org452e3fa" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h2 id="org452e3fa">Show them the Micro Service Document</h2>
+<div class="slide-footer"></div>
+</section>
+</section>
+</div>
+</div>
+<script src="reveal.js/lib/js/head.min.js"></script>
+<script src="reveal.js/js/reveal.js"></script>
+
+<script>
+// Full list of configuration options available here:
+// https://github.com/hakimel/reveal.js#configuration
+Reveal.initialize({
+
+controls: true,
+progress: true,
+history: false,
+center: true,
+slideNumber: false,
+rollingLinks: false,
+keyboard: true,
+overview: true,
+
+theme: Reveal.getQueryHash().theme, // available themes are in /css/theme
+transition: Reveal.getQueryHash().transition || 'default', // default/cube/page/concave/zoom/linear/fade/none
+transitionSpeed: 'default',
+multiplex: {
+    secret: '', // null if client
+    id: '', // id, obtained from socket.io server
+    url: '' // Location of socket.io server
+},
+
+// Optional libraries used to extend on reveal.js
+dependencies: [
+ { src: 'reveal.js/lib/js/classList.js', condition: function() { return !document.body.classList; } },
+ { src: 'reveal.js/plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+ { src: 'reveal.js/plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+ { src: 'reveal.js/plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
+ { src: 'reveal.js/plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } }]
+,});
+</script>
+</body>
+</html>

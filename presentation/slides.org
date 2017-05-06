@@ -1,0 +1,119 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:3 \n:nil ^:t arch:headline
+#+OPTIONS: author:t broken-links:nil c:nil creator:nil
+#+OPTIONS: d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t num:nil
+#+OPTIONS: p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t
+#+OPTIONS: timestamp:t title:t toc:nil todo:t |:t
+#+TITLE: Tangling Parentheses from Prose
+#+DATE: <2017-05-06 Sat>
+#+AUTHOR: Edward John Steere
+#+EMAIL: edward.steere@gmail.com
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 25.1.1 (Org mode 9.0.6)
+#+OPTIONS: reveal_center:t reveal_control:t reveal_height:-1
+#+OPTIONS: reveal_history:nil reveal_keyboard:t reveal_overview:t
+#+OPTIONS: reveal_progress:t reveal_rolling_links:nil
+#+OPTIONS: reveal_single_file:nil reveal_slide_number:nil
+#+OPTIONS: reveal_title_slide:auto reveal_width:-1
+#+REVEAL_MARGIN: -1
+#+REVEAL_MIN_SCALE: -1
+#+REVEAL_MAX_SCALE: -1
+#+REVEAL_ROOT: reveal.js
+#+REVEAL_TRANS: default
+#+REVEAL_SPEED: default
+#+REVEAL_THEME: sky
+#+REVEAL_EXTRA_CSS:
+#+REVEAL_EXTRA_JS:
+#+REVEAL_HLEVEL:
+#+REVEAL_TITLE_SLIDE_BACKGROUND:
+#+REVEAL_TITLE_SLIDE_BACKGROUND_SIZE:
+#+REVEAL_TITLE_SLIDE_BACKGROUND_POSITION:
+#+REVEAL_TITLE_SLIDE_BACKGROUND_REPEAT:
+#+REVEAL_TITLE_SLIDE_BACKGROUND_TRANSITION:
+#+REVEAL_DEFAULT_SLIDE_BACKGROUND:
+#+REVEAL_DEFAULT_SLIDE_BACKGROUND_SIZE:
+#+REVEAL_DEFAULT_SLIDE_BACKGROUND_POSITION:
+#+REVEAL_DEFAULT_SLIDE_BACKGROUND_REPEAT:
+#+REVEAL_DEFAULT_SLIDE_BACKGROUND_TRANSITION:
+#+REVEAL_MATHJAX_URL: https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML
+#+REVEAL_PREAMBLE:
+#+REVEAL_HEAD_PREAMBLE:
+#+REVEAL_POSTAMBLE:
+#+REVEAL_MULTIPLEX_ID:
+#+REVEAL_MULTIPLEX_SECRET:
+#+REVEAL_MULTIPLEX_URL:
+#+REVEAL_MULTIPLEX_SOCKETIO_URL:
+#+REVEAL_SLIDE_HEADER:
+#+REVEAL_SLIDE_FOOTER:
+#+REVEAL_PLUGINS:
+#+REVEAL_DEFAULT_FRAG_STYLE:
+#+REVEAL_INIT_SCRIPT:
+#+REVEAL_HIGHLIGHT_CSS: %r/lib/css/zenburn.css
+
+* Story Time
+#+BEGIN_EXPORT html
+<iframe width="835" height="480" src="https://www.youtube.com/embed/Av0PQDVTP4A?rel=0#t=0m56s" frameborder="0" allowfullscreen></iframe>
+#+END_EXPORT
+* What is Literate Programming
+#+BEGIN_NOTES
+We Try to Write Code Which Reads Well
+#+END_NOTES
+* What is Literate Programming
+#+BEGIN_NOTES
+In Clojure We Generally Succeed
+#+END_NOTES
+* What is Literate Programming
+#+BEGIN_NOTES
+Can You Tell me Why this Code Was Written
+#+END_NOTES
+# (perhaps take some code from a core library?)
+* What is Literate Programming
+#+BEGIN_NOTES
+Telling a Computer What to do in an English Like Style Sucks
+#+END_NOTES
+# (put up some Java code?)
+# (put up some Delphi code?)
+# (put up some Cobol code?)
+* What is Literate Programming
+#+BEGIN_NOTES
+Telling a Human How to do Something with Code Also Sucks
+#+END_NOTES
+# (tell a gardener to clean the garden with map)
+# (tell a friend to get coffee nearby with reduce)
+# (tell your family about your overseas trip with filter)
+* What is Literate Programming
+#+BEGIN_NOTES
+Natural Language + Code = Mind Blown
+#+END_NOTES
+* What is Literate Programming
+#+BEGIN_NOTES
+You Might Be Thinking of Docstrings
+#+END_NOTES
+* What is Literate Programming
+#+BEGIN_NOTES
+You Are Wrong! -- Who Understands EJBs by Reading the Doc
+#+END_NOTES
+* What is Literate Programming
+#+BEGIN_NOTES
+Idea is Simpler
+#+END_NOTES
+* What is Literate Programming
+#+BEGIN_NOTES
+Talk About the Idea and Sprinkle in Some Code When Needed
+#+END_NOTES
+* What is Literate Programming
+#+BEGIN_NOTES
+Two Principles: Tangle and Weave
+#+END_NOTES
+* Demo Some Clojure Literate Programming
+** Day 24 (Need to Translate)
+** Zoom in and Explain Some Functions
+** Why Did I Do it This Way (What did Ed of Last Year See?!)
+** Literate Version (Core Idea First)
+* Show them the Micro Service Code
+** Searching for Parts of the System
+** Reading the Description and Stuff
+** Update a Route to Greet Everyone at the Meetup
+* Show them the Micro Service Document
+
