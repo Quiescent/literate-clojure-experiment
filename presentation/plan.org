@@ -1,0 +1,48 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:3 \n:nil ^:t arch:headline
+#+OPTIONS: author:t broken-links:nil c:nil creator:nil
+#+OPTIONS: d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t num:t
+#+OPTIONS: p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t
+#+OPTIONS: timestamp:t title:t toc:t todo:t |:t
+#+TITLE: Plan for Meetup Presentation
+#+DATE: <2017-05-03 Wed>
+#+AUTHOR: Edward John Steere
+#+EMAIL: edward.steere@gmail.com
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 26.0.50 (Org mode 9.0.5)
+
+* 6 Minute Video
+https://www.youtube.com/watch?v=Av0PQDVTP4A
+0:56 -> 6:55
+
+* Describe What the Heck it is in Simple Terms
+** We Try to Write Code Which Reads Well
+** In Clojure We Generally Succeed
+** Can You Tell me Why this Code Was Written
+(perhaps take some code from a core library?)
+** Telling a Computer What to do in an English Like Style Sucks
+(put up some Java code?)
+(put up some Delphi code?)
+(put up some Cobol code?)
+** Telling a Human How to do Something with Code Also Sucks
+(tell a gardener to clean the garden with map)
+(tell a friend to get coffee nearby with reduce)
+(tell your family about your overseas trip with filter)
+** Natural Language + Code = Mind Blown
+** You Might Be Thinking of Docstrings
+** You Are Wrong! -- Who Understands EJBs by Reading the Doc
+[[docs.oracle.com/javaee/7/api/javax/ejb/EJB.html]]
+** Idea is Simpler
+** Talk About the Idea and Sprinkle in Some Code When Needed
+** Two Principles: Tangle and Weave
+* Demo Some Clojure Literate Programming
+** Day 24 (Need to Translate)
+** Zoom in and Explain Some Functions
+** Why Did I Do it This Way (What did Ed of Last Year See?!)
+** Literate Version (Core Idea First)
+* Show them the Micro Service Code
+** Searching for Parts of the System
+** Reading the Description and Stuff
+** Update a Route to Greet Everyone at the Meetup
+* Show them the Micro Service Document
