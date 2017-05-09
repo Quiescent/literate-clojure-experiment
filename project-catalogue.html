@@ -1,0 +1,897 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2017-05-09 Tue 19:39 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Project Catalogue</title>
+<meta name="generator" content="Org mode" />
+<meta name="author" content="Edward John Steere" />
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: visible;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+  /*]]>*/-->
+</style>
+<link rel="stylesheet" type="text/css" href="bootstrap.css" />
+<link rel="stylesheet" type="text/css" href="base.css" />
+<script type="text/javascript">
+/*
+@licstart  The following is the entire license notice for the
+JavaScript code in this tag.
+
+Copyright (C) 2012-2013 Free Software Foundation, Inc.
+
+The JavaScript code in this tag is free software: you can
+redistribute it and/or modify it under the terms of the GNU
+General Public License (GNU GPL) as published by the Free Software
+Foundation, either version 3 of the License, or (at your option)
+any later version.  The code is distributed WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.
+
+As additional permission under GNU GPL version 3 section 7, you
+may distribute non-source (e.g., minimized or compacted) forms of
+that code without the copy of the GNU GPL normally required by
+section 4, provided you include this license notice and a URL
+through which recipients can access the Corresponding Source.
+
+
+@licend  The above is the entire license notice
+for the JavaScript code in this tag.
+*/
+<!--/*--><![CDATA[/*><!--*/
+ function CodeHighlightOn(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(null != target) {
+     elem.cacheClassElem = elem.className;
+     elem.cacheClassTarget = target.className;
+     target.className = "code-highlighted";
+     elem.className   = "code-highlighted";
+   }
+ }
+ function CodeHighlightOff(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(elem.cacheClassElem)
+     elem.className = elem.cacheClassElem;
+   if(elem.cacheClassTarget)
+     target.className = elem.cacheClassTarget;
+ }
+/*]]>*///-->
+</script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">Project Catalogue</h1>
+<div id="table-of-contents">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents">
+<ul>
+<li><a href="#orga206cd8">1. Introduction</a>
+<ul>
+<li><a href="#org731192c">1.1. Project Local Setup</a></li>
+<li><a href="#orgc8f0b2d">1.2. Start NREPL</a></li>
+<li><a href="#org9a7eb3d">1.3. Start the Service</a></li>
+<li><a href="#orged246c5">1.4. Tangle and Eval All</a></li>
+</ul>
+</li>
+<li><a href="#orgcffc676">2. Defining the Microservice</a>
+<ul>
+<li><a href="#orgd9a31df">2.1. Routes</a></li>
+<li><a href="#org172018a">2.2. Getting Projects from Github</a></li>
+<li><a href="#org99520d9">2.3. Services</a></li>
+<li><a href="#org544fd46">2.4. Database Queries</a></li>
+<li><a href="#orgbd9bead">2.5. Pedestal Service Definition</a></li>
+<li><a href="#orgf7257b8">2.6. Web Server</a></li>
+<li><a href="#orgfe3095b">2.7. Keeping It Safe</a></li>
+<li><a href="#orgaa310ca">2.8. Post to a Token Service</a></li>
+<li><a href="#org2b51390">2.9. Handling XML</a></li>
+</ul>
+</li>
+<li><a href="#org0a6868c">3. Testing the Service</a>
+<ul>
+<li><a href="#orga4261d3">3.1. Get Projects</a></li>
+<li><a href="#orgb7fa859">3.2. Get a Project By Name</a></li>
+<li><a href="#org4c60880">3.3. Creating a Project</a></li>
+<li><a href="#orgea4ee6f">3.4. Searching Github</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-orga206cd8" class="outline-2">
+<h2 id="orga206cd8"><span class="section-number-2">1</span> Introduction</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+This is a literate program which demonstrates the power of using
+Emacs, org-mode and Emacs Lisp to create a Clojure microservice.
+</p>
+</div>
+
+<div id="outline-container-org731192c" class="outline-3">
+<h3 id="org731192c"><span class="section-number-3">1.1</span> Project Local Setup</h3>
+<div class="outline-text-3" id="text-1-1">
+<p>
+This section specifies some tools which are useful to use with this
+project.
+</p>
+
+<p>
+The first of which is tangling and executing the current block so that
+you don't have to tangle the whole darn project each time.  All credit
+for local key bindings goes to phils from this <a href="http://stackoverflow.com/questions/21486934/file-specific-key-binding-in-emacs">Stack Overflow article</a>.
+Evaluate this block and then you'll be able to use <code>C-c C-v C-t</code> with
+the point in any block and update the REPLs current definitions from
+that block.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-emacs-lisp"><span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">defun</span> <span style="color: #61afef;">my-buffer-local-set-key</span> <span style="color: #93a8c6;">(</span>key command<span style="color: #93a8c6;">)</span>
+  <span style="color: #9eac8c;">"Bind KEY to COMMAND in this buffer."</span>
+  <span style="color: #93a8c6;">(</span><span style="color: #c678dd; font-weight: bold;">let</span> <span style="color: #b0b1a3;">(</span><span style="color: #97b098;">(</span>oldmap <span style="color: #aebed8;">(</span>current-local-map<span style="color: #aebed8;">)</span><span style="color: #97b098;">)</span>
+        <span style="color: #97b098;">(</span>newmap <span style="color: #aebed8;">(</span>make-sparse-keymap<span style="color: #aebed8;">)</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">)</span>
+    <span style="color: #b0b1a3;">(</span><span style="color: #c678dd; font-weight: bold;">when</span> oldmap
+      <span style="color: #97b098;">(</span>set-keymap-parent newmap oldmap<span style="color: #97b098;">)</span><span style="color: #b0b1a3;">)</span>
+    <span style="color: #b0b1a3;">(</span>define-key newmap key command<span style="color: #b0b1a3;">)</span>
+    <span style="color: #b0b1a3;">(</span>use-local-map newmap<span style="color: #b0b1a3;">)</span><span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+
+<span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">defun</span> <span style="color: #61afef;">quiescent-tangle-and-load-current-block</span> <span style="color: #93a8c6;">(</span>point<span style="color: #93a8c6;">)</span>
+  <span style="color: #9eac8c;">"Tangle and load the block at POINT into the current clojure session."</span>
+  <span style="color: #93a8c6;">(</span><span style="color: #c678dd; font-weight: bold;">interactive</span> <span style="color: #98be65;">"d"</span><span style="color: #93a8c6;">)</span>
+  <span style="color: #93a8c6;">(</span><span style="color: #c678dd; font-weight: bold;">let</span> <span style="color: #b0b1a3;">(</span><span style="color: #97b098;">(</span>code <span style="color: #aebed8;">(</span>nth 5 <span style="color: #b0b0b3;">(</span>org-babel-tangle-single-block 0<span style="color: #b0b0b3;">)</span><span style="color: #aebed8;">)</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">)</span>
+    <span style="color: #b0b1a3;">(</span>message <span style="color: #97b098;">(</span>format <span style="color: #98be65;">"%s"</span>
+                     <span style="color: #aebed8;">(</span>nrepl-sync-request:eval
+                      code <span style="color: #b0b0b3;">(</span>cider-current-connection<span style="color: #b0b0b3;">)</span> <span style="color: #98be65;">"project-catalog.service"</span><span style="color: #aebed8;">)</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">)</span><span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+
+<span style="color: #8c8c8c;">(</span>my-buffer-local-set-key <span style="color: #93a8c6;">(</span>kbd <span style="color: #98be65;">"C-c C-v C-t"</span><span style="color: #93a8c6;">)</span> #'quiescent-tangle-and-load-current-block<span style="color: #8c8c8c;">)</span>
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgc8f0b2d" class="outline-3">
+<h3 id="orgc8f0b2d"><span class="section-number-3">1.2</span> Start NREPL</h3>
+<div class="outline-text-3" id="text-1-2">
+<p>
+This step requires that you have cider installed as well as Clojure
+mode.  It'll just run the same <code>jack-in</code> command as you usually would
+when you're editing a file.  Run this block before continuing.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-emacs-lisp"><span style="color: #8c8c8c;">(</span>call-interactively 'cider-jack-in<span style="color: #8c8c8c;">)</span>
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org9a7eb3d" class="outline-3">
+<h3 id="org9a7eb3d"><span class="section-number-3">1.3</span> Start the Service</h3>
+<div class="outline-text-3" id="text-1-3">
+<p>
+This block will start your web service.  We run it with an optional
+flag which makes it run asynchronously so that you can continue
+sending commands to the REPL while it's going.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-emacs-lisp"><span style="color: #8c8c8c;">(</span>call-interactively #'org-babel-tangle<span style="color: #8c8c8c;">)</span>
+
+<span style="color: #8c8c8c;">(</span>cider-load-file <span style="color: #98be65;">"src/service.clj"</span><span style="color: #8c8c8c;">)</span>
+
+<span style="color: #8c8c8c;">(</span>nrepl-sync-request:eval <span style="color: #98be65;">"(project-catalog.service/run-dev)"</span>
+                         <span style="color: #93a8c6;">(</span>cider-current-connection<span style="color: #93a8c6;">)</span>
+                         <span style="color: #93a8c6;">(</span>cider-current-ns<span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orged246c5" class="outline-3">
+<h3 id="orged246c5"><span class="section-number-3">1.4</span> Tangle and Eval All</h3>
+<div class="outline-text-3" id="text-1-4">
+<p>
+This serves as a convenience to reload everything in the project by
+first tangling and then updating the environment.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-emacs-lisp"><span style="color: #8c8c8c;">(</span>call-interactively #'org-babel-tangle<span style="color: #8c8c8c;">)</span>
+
+<span style="color: #8c8c8c;">(</span>mapc <span style="color: #93a8c6;">(</span><span style="color: #c678dd; font-weight: bold;">lambda</span> <span style="color: #b0b1a3;">(</span>file<span style="color: #b0b1a3;">)</span>
+        <span style="color: #b0b1a3;">(</span>cider-load-file file<span style="color: #b0b1a3;">)</span><span style="color: #93a8c6;">)</span>
+      <span style="color: #93a8c6;">(</span>directory-files <span style="color: #98be65;">"src/"</span> t <span style="color: #98be65;">".*</span><span style="color: #ff6c6b; background-color: #4c3840; font-weight: bold;">\</span><span style="color: #98be65;">.clj$"</span> t<span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgcffc676" class="outline-2">
+<h2 id="orgcffc676"><span class="section-number-2">2</span> Defining the Microservice</h2>
+<div class="outline-text-2" id="text-2">
+<p>
+The micro service has been broken down into components which appear in
+the order of greatest interest first.  The service itself is simply
+the composition of these components as follows:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-clojure"><span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">ns</span> <span style="color: #61afef;">project-catalog.service</span><span style="color: #8c8c8c;">)</span>
+
+&lt;&lt;server&gt;&gt;
+</pre>
+</div>
+</div>
+
+<div id="outline-container-orgd9a31df" class="outline-3">
+<h3 id="orgd9a31df"><span class="section-number-3">2.1</span> Routes</h3>
+<div class="outline-text-3" id="text-2-1">
+<p>
+This section will cover the routes which we're defining in our
+service.
+</p>
+
+<p>
+We have an <code>/about</code> which explains the purpose of the service, index
+which just posts the <code>project-catalog</code> in it's entirety, a projects URL
+which you can post to and get from for projects and creating a project
+respectively and a get for a particular project which accepts the
+project name in the URL.
+</p>
+
+<p>
+Important things to note here are that Pedestal can chain interceptors
+together, e.g. the <code>body-params</code> interceptor and the <code>add-project</code>
+interceptor.  The first parses parameters and the second handles the
+request (with parameters now parsed and useful).  A problem with
+adopting that approach is that Pedestal can't figure out the
+difference between the vector version and some of the other routes
+(could never figure out which) in that it can't generate a unique name
+for them.  What I ended up needing to do was add a <code>:route-name</code>
+keyword with a keyword name following it for that route.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-clojure">&lt;&lt;token&gt;&gt;
+&lt;&lt;services&gt;&gt;
+
+<span style="color: #8c8c8c;">(</span>require '<span style="color: #93a8c6;">[</span><span style="color: #61afef;">io.pedestal.http.body-params</span> <span style="color: #61afef; font-weight: bold;">:as</span> body-params<span style="color: #93a8c6;">]</span><span style="color: #8c8c8c;">)</span>
+
+<span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">def</span> <span style="color: #61afef;">routes</span> #<span style="color: #93a8c6;">{</span><span style="color: #b0b1a3;">[</span><span style="color: #98be65;">"/"</span>                       <span style="color: #61afef; font-weight: bold;">:get</span>  <span style="color: #97b098;">[</span>`token-check `home-page<span style="color: #97b098;">]</span><span style="color: #b0b1a3;">]</span>
+              <span style="color: #b0b1a3;">[</span><span style="color: #98be65;">"/projects"</span>               <span style="color: #61afef; font-weight: bold;">:post</span> <span style="color: #97b098;">[</span>`token-check <span style="color: #aebed8;">(</span><span style="color: #61afef;">body-params</span><span style="color: #abb2bf; background-color: #282c34;">/</span>body-params<span style="color: #aebed8;">)</span> `add-project<span style="color: #97b098;">]</span>
+               <span style="color: #61afef; font-weight: bold;">:route-name</span> <span style="color: #61afef; font-weight: bold;">:add-project</span><span style="color: #b0b1a3;">]</span>
+              <span style="color: #b0b1a3;">[</span><span style="color: #98be65;">"/projects-xml"</span>           <span style="color: #61afef; font-weight: bold;">:post</span> <span style="color: #97b098;">[</span>`token-check <span style="color: #aebed8;">(</span><span style="color: #61afef;">body-params</span><span style="color: #abb2bf; background-color: #282c34;">/</span>body-params<span style="color: #aebed8;">)</span> `add-project-by-xml<span style="color: #97b098;">]</span>
+               <span style="color: #61afef; font-weight: bold;">:route-name</span> <span style="color: #61afef; font-weight: bold;">:add-project-by-xml</span><span style="color: #b0b1a3;">]</span>
+              <span style="color: #b0b1a3;">[</span><span style="color: #98be65;">"/projects"</span>               <span style="color: #61afef; font-weight: bold;">:get</span>  <span style="color: #97b098;">[</span>`token-check `get-projects<span style="color: #97b098;">]</span><span style="color: #b0b1a3;">]</span>
+              <span style="color: #b0b1a3;">[</span><span style="color: #98be65;">"/projects/:project-name"</span> <span style="color: #61afef; font-weight: bold;">:get</span>  <span style="color: #97b098;">[</span>`token-check `get-project<span style="color: #97b098;">]</span><span style="color: #b0b1a3;">]</span>
+              <span style="color: #b0b1a3;">[</span><span style="color: #98be65;">"/about"</span>                  <span style="color: #61afef; font-weight: bold;">:get</span>  <span style="color: #97b098;">[</span>`token-check `about-page<span style="color: #97b098;">]</span><span style="color: #b0b1a3;">]</span>
+              <span style="color: #b0b1a3;">[</span><span style="color: #98be65;">"/see-also"</span>               <span style="color: #61afef; font-weight: bold;">:get</span>  <span style="color: #97b098;">[</span>`token-check `git-get<span style="color: #97b098;">]</span><span style="color: #b0b1a3;">]</span><span style="color: #93a8c6;">}</span><span style="color: #8c8c8c;">)</span>
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org172018a" class="outline-3">
+<h3 id="org172018a"><span class="section-number-3">2.2</span> Getting Projects from Github</h3>
+<div class="outline-text-3" id="text-2-2">
+<p>
+We're going to use the HTTP client wrapper (a Clojure wrapper of the
+Java HTTP client library) to make the calls.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-clojure"><span style="color: #8c8c8c;">(</span>require '<span style="color: #93a8c6;">[</span><span style="color: #61afef;">clj-http.client</span> <span style="color: #61afef; font-weight: bold;">:as</span> client<span style="color: #93a8c6;">]</span>
+         '<span style="color: #93a8c6;">[</span><span style="color: #61afef;">clojure.data.json</span> <span style="color: #61afef; font-weight: bold;">:as</span> json<span style="color: #93a8c6;">]</span><span style="color: #8c8c8c;">)</span>
+
+<span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">defn</span> <span style="color: #61afef;">git-search</span>
+  <span style="color: #93a8c6;">[</span>q<span style="color: #93a8c6;">]</span>
+  <span style="color: #93a8c6;">(</span><span style="color: #c678dd; font-weight: bold;">let</span> <span style="color: #b0b1a3;">[</span>ret <span style="color: #97b098;">(</span><span style="color: #61afef;">client</span><span style="color: #abb2bf; background-color: #282c34;">/</span>get <span style="color: #aebed8;">(</span>format <span style="color: #98be65;">"https://api.github.com/search/repositories?q=%s+language:clojure"</span> q<span style="color: #aebed8;">)</span>
+                        <span style="color: #aebed8;">{</span><span style="color: #61afef; font-weight: bold;">:debug</span> <span style="color: #da8548; font-weight: bold;">false</span>
+                         <span style="color: #61afef; font-weight: bold;">:content-type</span> <span style="color: #61afef; font-weight: bold;">:json</span>
+                         <span style="color: #61afef; font-weight: bold;">:accept</span> <span style="color: #61afef; font-weight: bold;">:json</span><span style="color: #aebed8;">}</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">]</span>
+    <span style="color: #b0b1a3;">(</span><span style="color: #61afef;">json</span><span style="color: #abb2bf; background-color: #282c34;">/</span>read-str <span style="color: #97b098;">(</span>ret <span style="color: #61afef; font-weight: bold;">:body</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">)</span><span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org99520d9" class="outline-3">
+<h3 id="org99520d9"><span class="section-number-3">2.3</span> Services</h3>
+<div class="outline-text-3" id="text-2-3">
+<p>
+Each route is routed to a service.  We define those services with a
+single function which we define as follows:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-clojure">&lt;&lt;get-project&gt;&gt;
+&lt;&lt;http-client&gt;&gt;
+
+<span style="color: #8c8c8c;">(</span>require '<span style="color: #93a8c6;">[</span><span style="color: #61afef;">io.pedestal.http</span> <span style="color: #61afef; font-weight: bold;">:as</span> http<span style="color: #93a8c6;">]</span>
+         '<span style="color: #93a8c6;">[</span><span style="color: #61afef;">io.pedestal.http.route</span> <span style="color: #61afef; font-weight: bold;">:as</span> route<span style="color: #93a8c6;">]</span>
+         '<span style="color: #93a8c6;">[</span><span style="color: #61afef;">ring.util.response</span> <span style="color: #61afef; font-weight: bold;">:as</span> ring-resp<span style="color: #93a8c6;">]</span>
+         '<span style="color: #93a8c6;">[</span><span style="color: #61afef;">monger.core</span> <span style="color: #61afef; font-weight: bold;">:as</span> mg<span style="color: #93a8c6;">]</span>
+         '<span style="color: #93a8c6;">[</span><span style="color: #61afef;">monger.credentials</span> <span style="color: #61afef; font-weight: bold;">:as</span> mcr<span style="color: #93a8c6;">]</span>
+         '<span style="color: #93a8c6;">[</span><span style="color: #61afef;">monger.collection</span> <span style="color: #61afef; font-weight: bold;">:as</span> mc<span style="color: #93a8c6;">]</span>
+         '<span style="color: #93a8c6;">[</span><span style="color: #61afef;">monger.json</span><span style="color: #93a8c6;">]</span>
+         '<span style="color: #93a8c6;">[</span><span style="color: #61afef;">clojure.data.xml</span> <span style="color: #61afef; font-weight: bold;">:as</span> xml<span style="color: #93a8c6;">]</span><span style="color: #8c8c8c;">)</span>
+
+<span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">defn</span> <span style="color: #61afef;">about-page</span>
+  <span style="color: #93a8c6;">[</span>request<span style="color: #93a8c6;">]</span>
+  <span style="color: #93a8c6;">(</span><span style="color: #61afef;">ring-resp</span><span style="color: #abb2bf; background-color: #282c34;">/</span>response <span style="color: #b0b1a3;">(</span>format <span style="color: #98be65;">"Clojure %s - served from %s"</span>
+                              <span style="color: #97b098;">(</span>clojure-version<span style="color: #97b098;">)</span>
+                              <span style="color: #97b098;">(</span><span style="color: #61afef;">route</span><span style="color: #abb2bf; background-color: #282c34;">/</span>url-for <span style="color: #61afef; font-weight: bold;">::about-page</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">)</span><span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+
+<span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">defn</span> <span style="color: #61afef;">home-page</span>
+  <span style="color: #93a8c6;">[</span>request<span style="color: #93a8c6;">]</span>
+  <span style="color: #93a8c6;">(</span><span style="color: #c678dd; font-weight: bold;">let</span> <span style="color: #b0b1a3;">[</span>conn <span style="color: #97b098;">(</span><span style="color: #61afef;">mg</span><span style="color: #abb2bf; background-color: #282c34;">/</span>connect-with-credentials
+              <span style="color: #98be65;">"ds161580.mlab.com:61580"</span>
+              <span style="color: #aebed8;">(</span><span style="color: #61afef;">mcr</span><span style="color: #abb2bf; background-color: #282c34;">/</span>create <span style="color: #98be65;">"user"</span>
+                          <span style="color: #98be65;">"bucket"</span>
+                          <span style="color: #98be65;">"password"</span><span style="color: #aebed8;">)</span><span style="color: #97b098;">)</span>
+        db <span style="color: #97b098;">(</span><span style="color: #61afef;">mg</span><span style="color: #abb2bf; background-color: #282c34;">/</span>get-db conn <span style="color: #98be65;">"bucket"</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">]</span>
+    <span style="color: #b0b1a3;">(</span><span style="color: #61afef;">http</span><span style="color: #abb2bf; background-color: #282c34;">/</span>json-response
+     <span style="color: #97b098;">(</span><span style="color: #61afef;">mc</span><span style="color: #abb2bf; background-color: #282c34;">/</span>find-maps db
+                   <span style="color: #98be65;">"project-catalog"</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">)</span><span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+
+<span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">def</span> <span style="color: #61afef;">mock-project-collection</span> <span style="color: #93a8c6;">{</span><span style="color: #61afef; font-weight: bold;">:sleeping-cat</span> <span style="color: #b0b1a3;">{</span><span style="color: #61afef; font-weight: bold;">:name</span> <span style="color: #98be65;">"Sleeping Cat Project"</span>
+                                             <span style="color: #61afef; font-weight: bold;">:framework</span> <span style="color: #98be65;">"Pedastal"</span>
+                                             <span style="color: #61afef; font-weight: bold;">:language</span> <span style="color: #98be65;">"Clojure"</span>
+                                             <span style="color: #61afef; font-weight: bold;">:repo</span> <span style="color: #98be65;">"https://gitlab.com/srehorn/sleepingcat"</span><span style="color: #b0b1a3;">}</span>
+                              <span style="color: #61afef; font-weight: bold;">:stinkey-dog</span> <span style="color: #b0b1a3;">{</span><span style="color: #61afef; font-weight: bold;">:name</span> <span style="color: #98be65;">"Stinky Dog Experiment"</span>
+                                            <span style="color: #61afef; font-weight: bold;">:framework</span> <span style="color: #98be65;">"Grails"</span>
+                                            <span style="color: #61afef; font-weight: bold;">:language</span> <span style="color: #98be65;">"Groovy"</span>
+                                            <span style="color: #61afef; font-weight: bold;">:repo</span> <span style="color: #98be65;">"https://gitlab.com/srehorn/stinkydog"</span><span style="color: #b0b1a3;">}</span><span style="color: #93a8c6;">}</span><span style="color: #8c8c8c;">)</span>
+
+<span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">defn</span> <span style="color: #61afef;">git-get</span>
+  <span style="color: #93a8c6;">[</span>request<span style="color: #93a8c6;">]</span>
+  <span style="color: #93a8c6;">(</span><span style="color: #61afef;">http</span><span style="color: #abb2bf; background-color: #282c34;">/</span>json-response
+   <span style="color: #b0b1a3;">(</span>git-search <span style="color: #97b098;">(</span>get-in request <span style="color: #aebed8;">[</span><span style="color: #61afef; font-weight: bold;">:query-params</span> <span style="color: #61afef; font-weight: bold;">:q</span><span style="color: #aebed8;">]</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">)</span><span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+
+
+<span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">defn</span> <span style="color: #61afef;">get-projects</span>
+  <span style="color: #93a8c6;">[</span>request<span style="color: #93a8c6;">]</span>
+  <span style="color: #93a8c6;">(</span><span style="color: #61afef;">http</span><span style="color: #abb2bf; background-color: #282c34;">/</span>json-response mock-project-collection<span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+
+<span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">defn</span> <span style="color: #61afef;">get-project</span>
+  <span style="color: #93a8c6;">[</span>request<span style="color: #93a8c6;">]</span>
+  <span style="color: #93a8c6;">(</span><span style="color: #c678dd; font-weight: bold;">let</span> <span style="color: #b0b1a3;">[</span>projname <span style="color: #97b098;">(</span>get-in request <span style="color: #aebed8;">[</span><span style="color: #61afef; font-weight: bold;">:path-params</span> <span style="color: #61afef; font-weight: bold;">:project-name</span><span style="color: #aebed8;">]</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">]</span>
+    <span style="color: #b0b1a3;">(</span><span style="color: #61afef;">http</span><span style="color: #abb2bf; background-color: #282c34;">/</span>json-response <span style="color: #97b098;">(</span>db-get-project projname<span style="color: #97b098;">)</span><span style="color: #b0b1a3;">)</span><span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+
+<span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">defn</span> <span style="color: #61afef;">add-project</span>
+  <span style="color: #93a8c6;">[</span>request<span style="color: #93a8c6;">]</span>
+  <span style="color: #93a8c6;">(</span><span style="color: #c678dd; font-weight: bold;">let</span> <span style="color: #b0b1a3;">[</span>incoming <span style="color: #97b098;">(</span><span style="color: #61afef; font-weight: bold;">:json-params</span> request<span style="color: #97b098;">)</span>
+        conn <span style="color: #97b098;">(</span><span style="color: #61afef;">mg</span><span style="color: #abb2bf; background-color: #282c34;">/</span>connect-with-credentials
+              <span style="color: #98be65;">"ds161580.mlab.com:61580"</span>
+              <span style="color: #aebed8;">(</span><span style="color: #61afef;">mcr</span><span style="color: #abb2bf; background-color: #282c34;">/</span>create <span style="color: #98be65;">"user"</span>
+                          <span style="color: #98be65;">"bucket"</span>
+                          <span style="color: #98be65;">"password"</span><span style="color: #aebed8;">)</span><span style="color: #97b098;">)</span>
+        db <span style="color: #97b098;">(</span><span style="color: #61afef;">mg</span><span style="color: #abb2bf; background-color: #282c34;">/</span>get-db conn <span style="color: #98be65;">"bucket"</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">]</span>
+    <span style="color: #b0b1a3;">(</span><span style="color: #61afef;">ring-resp</span><span style="color: #abb2bf; background-color: #282c34;">/</span>created <span style="color: #98be65;">"http://my-created-resource-url"</span>
+                       <span style="color: #97b098;">(</span><span style="color: #61afef;">mc</span><span style="color: #abb2bf; background-color: #282c34;">/</span>insert-and-return db <span style="color: #98be65;">"project-catalog"</span> incoming<span style="color: #97b098;">)</span><span style="color: #b0b1a3;">)</span><span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+
+&lt;&lt;xml&gt;&gt;
+
+<span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">defn</span> <span style="color: #61afef;">add-project-by-xml</span>
+  <span style="color: #93a8c6;">[</span>request<span style="color: #93a8c6;">]</span>
+  <span style="color: #93a8c6;">(</span><span style="color: #c678dd; font-weight: bold;">let</span> <span style="color: #b0b1a3;">[</span>incoming <span style="color: #97b098;">(</span><span style="color: #61afef; font-weight: bold;">:json-params</span> request<span style="color: #97b098;">)</span>
+        conn <span style="color: #97b098;">(</span><span style="color: #61afef;">mg</span><span style="color: #abb2bf; background-color: #282c34;">/</span>connect-with-credentials
+              <span style="color: #98be65;">"ds161580.mlab.com:61580"</span>
+              <span style="color: #aebed8;">(</span><span style="color: #61afef;">mcr</span><span style="color: #abb2bf; background-color: #282c34;">/</span>create <span style="color: #98be65;">"user"</span>
+                          <span style="color: #98be65;">"bucket"</span>
+                          <span style="color: #98be65;">"password"</span><span style="color: #aebed8;">)</span><span style="color: #97b098;">)</span>
+        db <span style="color: #97b098;">(</span><span style="color: #61afef;">mg</span><span style="color: #abb2bf; background-color: #282c34;">/</span>get-db conn <span style="color: #98be65;">"bucket"</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">]</span>
+    <span style="color: #b0b1a3;">(</span><span style="color: #c678dd; font-weight: bold;">-&gt;</span> <span style="color: #97b098;">(</span><span style="color: #61afef;">ring-resp</span><span style="color: #abb2bf; background-color: #282c34;">/</span>created <span style="color: #98be65;">"http://my-created-resource-url"</span>
+                           <span style="color: #aebed8;">(</span><span style="color: #61afef;">xml</span><span style="color: #abb2bf; background-color: #282c34;">/</span>emit-str <span style="color: #b0b0b3;">(</span>project-to-xml-str <span style="color: #90a890;">(</span><span style="color: #61afef;">mc</span><span style="color: #abb2bf; background-color: #282c34;">/</span>insert-and-return db <span style="color: #98be65;">"project-catalog"</span> incoming<span style="color: #90a890;">)</span><span style="color: #b0b0b3;">)</span><span style="color: #aebed8;">)</span><span style="color: #97b098;">)</span>
+        <span style="color: #97b098;">(</span><span style="color: #61afef;">ring-resp</span><span style="color: #abb2bf; background-color: #282c34;">/</span>content-type <span style="color: #98be65;">"application/xml"</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">)</span><span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org544fd46" class="outline-3">
+<h3 id="org544fd46"><span class="section-number-3">2.4</span> Database Queries</h3>
+<div class="outline-text-3" id="text-2-4">
+<p>
+The first query which we need is one to get a project by it's name.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-clojure"><span style="color: #8c8c8c;">(</span>require '<span style="color: #93a8c6;">[</span><span style="color: #61afef;">monger.core</span> <span style="color: #61afef; font-weight: bold;">:as</span> mg<span style="color: #93a8c6;">]</span>
+         '<span style="color: #93a8c6;">[</span><span style="color: #61afef;">monger.credentials</span> <span style="color: #61afef; font-weight: bold;">:as</span> mcr<span style="color: #93a8c6;">]</span>
+         '<span style="color: #93a8c6;">[</span><span style="color: #61afef;">monger.collection</span> <span style="color: #61afef; font-weight: bold;">:as</span> mc<span style="color: #93a8c6;">]</span><span style="color: #8c8c8c;">)</span>
+
+<span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">defn</span> <span style="color: #61afef;">db-get-project</span>
+  <span style="color: #93a8c6;">[</span>proj-name<span style="color: #93a8c6;">]</span>
+  <span style="color: #93a8c6;">(</span><span style="color: #c678dd; font-weight: bold;">let</span> <span style="color: #b0b1a3;">[</span>conn <span style="color: #97b098;">(</span><span style="color: #61afef;">mg</span><span style="color: #abb2bf; background-color: #282c34;">/</span>connect-with-credentials
+              <span style="color: #98be65;">"ds161580.mlab.com:61580"</span>
+              <span style="color: #aebed8;">(</span><span style="color: #61afef;">mcr</span><span style="color: #abb2bf; background-color: #282c34;">/</span>create <span style="color: #98be65;">"user"</span>
+                          <span style="color: #98be65;">"bucket"</span>
+                          <span style="color: #98be65;">"password"</span><span style="color: #aebed8;">)</span><span style="color: #97b098;">)</span>
+        db <span style="color: #97b098;">(</span><span style="color: #61afef;">mg</span><span style="color: #abb2bf; background-color: #282c34;">/</span>get-db conn <span style="color: #98be65;">"bucket"</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">]</span>
+    <span style="color: #b0b1a3;">(</span><span style="color: #61afef;">mc</span><span style="color: #abb2bf; background-color: #282c34;">/</span>find-maps db <span style="color: #98be65;">"project-catalog"</span> <span style="color: #97b098;">{</span><span style="color: #61afef; font-weight: bold;">:proj-name</span> proj-name<span style="color: #97b098;">}</span><span style="color: #b0b1a3;">)</span><span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgbd9bead" class="outline-3">
+<h3 id="orgbd9bead"><span class="section-number-3">2.5</span> Pedestal Service Definition</h3>
+<div class="outline-text-3" id="text-2-5">
+<p>
+Pedestal requires a definition of the service as a whole which
+includes everything that the server needs in order to start up a
+server with the required stuff.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-clojure">&lt;&lt;routes&gt;&gt;
+
+<span style="color: #8c8c8c;">(</span>require '<span style="color: #93a8c6;">[</span><span style="color: #61afef;">io.pedestal.http</span> <span style="color: #61afef; font-weight: bold;">:as</span> http<span style="color: #93a8c6;">]</span><span style="color: #8c8c8c;">)</span>
+
+<span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">def</span> <span style="color: #61afef;">service</span> <span style="color: #93a8c6;">{</span><span style="color: #61afef; font-weight: bold;">:env</span> <span style="color: #61afef; font-weight: bold;">:prod</span>
+              <span style="color: #61afef; font-weight: bold;">::http/routes</span> routes
+              <span style="color: #61afef; font-weight: bold;">::http/resource-path</span> <span style="color: #98be65;">"/public"</span>
+              <span style="color: #61afef; font-weight: bold;">::http/type</span> <span style="color: #61afef; font-weight: bold;">:jetty</span>
+              <span style="color: #61afef; font-weight: bold;">::http/port</span> 8080
+              <span style="color: #61afef; font-weight: bold;">::http/container-options</span> <span style="color: #b0b1a3;">{</span><span style="color: #61afef; font-weight: bold;">:h2c?</span> <span style="color: #da8548; font-weight: bold;">true</span>
+                                        <span style="color: #61afef; font-weight: bold;">:h2?</span>  <span style="color: #da8548; font-weight: bold;">false</span>
+                                        <span style="color: #61afef; font-weight: bold;">:ssl?</span> <span style="color: #da8548; font-weight: bold;">false</span><span style="color: #b0b1a3;">}</span><span style="color: #93a8c6;">}</span><span style="color: #8c8c8c;">)</span>
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgf7257b8" class="outline-3">
+<h3 id="orgf7257b8"><span class="section-number-3">2.6</span> Web Server</h3>
+<div class="outline-text-3" id="text-2-6">
+<p>
+The definition of the server itself is as follows.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-clojure">&lt;&lt;pedestal-service&gt;&gt;
+
+<span style="color: #8c8c8c;">(</span>require '<span style="color: #93a8c6;">[</span><span style="color: #61afef;">io.pedestal.http</span>       <span style="color: #61afef; font-weight: bold;">:as</span> server<span style="color: #93a8c6;">]</span>
+         '<span style="color: #93a8c6;">[</span><span style="color: #61afef;">io.pedestal.http.route</span> <span style="color: #61afef; font-weight: bold;">:as</span> route<span style="color: #93a8c6;">]</span><span style="color: #8c8c8c;">)</span>
+
+<span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">defonce</span> <span style="color: #61afef;">runnable-service</span> <span style="color: #93a8c6;">(</span><span style="color: #61afef;">server</span><span style="color: #abb2bf; background-color: #282c34;">/</span>create-server service<span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+
+<span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">defn</span> <span style="color: #61afef;">run-dev</span>
+  <span style="color: #9eac8c;">"Run the server persistently and in the background for development."</span>
+  <span style="color: #93a8c6;">[</span>&amp; args<span style="color: #93a8c6;">]</span>
+  <span style="color: #93a8c6;">(</span>println <span style="color: #98be65;">"</span><span style="color: #98be65; font-weight: bold;">\n</span><span style="color: #98be65;">Creating your [DEV] server..."</span><span style="color: #93a8c6;">)</span>
+  <span style="color: #93a8c6;">(</span><span style="color: #c678dd; font-weight: bold;">-&gt;</span> service
+      <span style="color: #b0b1a3;">(</span>merge <span style="color: #97b098;">{</span><span style="color: #61afef; font-weight: bold;">:env</span> <span style="color: #61afef; font-weight: bold;">:dev</span>
+              <span style="color: #61afef; font-weight: bold;">::server/join?</span> <span style="color: #da8548; font-weight: bold;">false</span>
+              <span style="color: #61afef; font-weight: bold;">::server/routes</span> #<span style="color: #aebed8;">(</span><span style="color: #61afef;">route</span><span style="color: #abb2bf; background-color: #282c34;">/</span>expand-routes <span style="color: #b0b0b3;">(</span>deref #'routes<span style="color: #b0b0b3;">)</span><span style="color: #aebed8;">)</span>
+              <span style="color: #61afef; font-weight: bold;">::server/allowed-origins</span> <span style="color: #aebed8;">{</span><span style="color: #61afef; font-weight: bold;">:creds</span> <span style="color: #da8548; font-weight: bold;">true</span> <span style="color: #61afef; font-weight: bold;">:allowed-origins</span> <span style="color: #b0b0b3;">(</span>constantly <span style="color: #da8548; font-weight: bold;">true</span><span style="color: #b0b0b3;">)</span><span style="color: #aebed8;">}</span><span style="color: #97b098;">}</span><span style="color: #b0b1a3;">)</span>
+      <span style="color: #61afef;">server</span><span style="color: #abb2bf; background-color: #282c34;">/</span>default-interceptors
+      <span style="color: #61afef;">server</span><span style="color: #abb2bf; background-color: #282c34;">/</span>dev-interceptors
+      <span style="color: #61afef;">server</span><span style="color: #abb2bf; background-color: #282c34;">/</span>create-server
+      <span style="color: #61afef;">server</span><span style="color: #abb2bf; background-color: #282c34;">/</span>start<span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgfe3095b" class="outline-3">
+<h3 id="orgfe3095b"><span class="section-number-3">2.7</span> Keeping It Safe</h3>
+<div class="outline-text-3" id="text-2-7">
+<p>
+We need a form of defence against unwanted use of the micro service.
+For this we're simply going to check that every request made to the
+service contains a token in the headers which we're looking for.  If
+it has the token then we may continue, otherwise we ought to tell them
+that the action is not authorised.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-clojure"><span style="color: #8c8c8c;">(</span>require '<span style="color: #93a8c6;">[</span><span style="color: #61afef;">io.pedestal.interceptor.helpers</span> <span style="color: #61afef; font-weight: bold;">:as</span> helpers<span style="color: #93a8c6;">]</span>
+         '<span style="color: #93a8c6;">[</span><span style="color: #61afef;">ring.util.response</span> <span style="color: #61afef; font-weight: bold;">:as</span> ring-resp<span style="color: #93a8c6;">]</span><span style="color: #8c8c8c;">)</span>
+
+<span style="color: #8c8c8c;">(</span><span style="color: #61afef;">helpers</span><span style="color: #abb2bf; background-color: #282c34;">/</span><span style="color: #c678dd; font-weight: bold;">defhandler</span> <span style="color: #61afef;">token-check</span>
+  <span style="color: #93a8c6;">[</span>request<span style="color: #93a8c6;">]</span>
+  <span style="color: #93a8c6;">(</span><span style="color: #c678dd; font-weight: bold;">let</span> <span style="color: #b0b1a3;">[</span>token <span style="color: #97b098;">(</span>get-in request <span style="color: #aebed8;">[</span><span style="color: #61afef; font-weight: bold;">:headers</span> <span style="color: #98be65;">"x-catalog-token"</span><span style="color: #aebed8;">]</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">]</span>
+    <span style="color: #b0b1a3;">(</span><span style="color: #c678dd; font-weight: bold;">if</span> <span style="color: #97b098;">(</span>not <span style="color: #aebed8;">(</span>= token <span style="color: #98be65;">"o brave new world"</span><span style="color: #aebed8;">)</span><span style="color: #97b098;">)</span>
+      <span style="color: #97b098;">(</span>assoc <span style="color: #aebed8;">(</span><span style="color: #61afef;">ring-resp</span><span style="color: #abb2bf; background-color: #282c34;">/</span>response <span style="color: #b0b0b3;">{</span><span style="color: #61afef; font-weight: bold;">:body</span> <span style="color: #98be65;">"access denied"</span><span style="color: #b0b0b3;">}</span><span style="color: #aebed8;">)</span> <span style="color: #61afef; font-weight: bold;">:status</span> 403<span style="color: #97b098;">)</span><span style="color: #b0b1a3;">)</span><span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgaa310ca" class="outline-3">
+<h3 id="orgaa310ca"><span class="section-number-3">2.8</span> Post to a Token Service</h3>
+<div class="outline-text-3" id="text-2-8">
+<p>
+Sometimes we might want to call another service.  In this example
+we're going to pretend to be calling a token auth. service.  This is
+mostly for demonstration, but if you have a real service then you can
+quite easily see how it's done.
+</p>
+
+<p>
+This is the example given in the course which I was doing, but
+predictably along with everything else in the course it was out of
+date and didn't exist anymore.  It looked like a temporary thing
+anyway so I don't knew whether the instructor intended for his
+students to call the service.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-clojure"><span style="color: #8c8c8c;">(</span>require '<span style="color: #93a8c6;">[</span><span style="color: #61afef;">clj-http.client</span> <span style="color: #61afef; font-weight: bold;">:as</span> client<span style="color: #93a8c6;">]</span>
+         '<span style="color: #93a8c6;">[</span><span style="color: #61afef;">clojure.data.json</span> <span style="color: #61afef; font-weight: bold;">:as</span> json<span style="color: #93a8c6;">]</span><span style="color: #8c8c8c;">)</span>
+
+<span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">defn</span> <span style="color: #61afef;">auth0-token</span>
+  <span style="color: #93a8c6;">[]</span>
+  <span style="color: #93a8c6;">(</span><span style="color: #c678dd; font-weight: bold;">let</span> <span style="color: #b0b1a3;">[</span>ret <span style="color: #97b098;">(</span><span style="color: #61afef;">client</span><span style="color: #abb2bf; background-color: #282c34;">/</span>post <span style="color: #98be65;">"https://jemez.auth0.com/oath/token"</span>
+                         <span style="color: #aebed8;">{</span><span style="color: #61afef; font-weight: bold;">:debug</span> <span style="color: #da8548; font-weight: bold;">false</span>
+                          <span style="color: #61afef; font-weight: bold;">:content-type</span> <span style="color: #61afef; font-weight: bold;">:json</span>
+                          <span style="color: #61afef; font-weight: bold;">:form-params</span> <span style="color: #b0b0b3;">{</span><span style="color: #61afef; font-weight: bold;">:client_id</span> <span style="color: #98be65;">"AUTH_CLIENT_ID"</span>
+                                        <span style="color: #61afef; font-weight: bold;">:client_secret</span> <span style="color: #98be65;">"AUTH_SECRET"</span>
+                                        <span style="color: #61afef; font-weight: bold;">:grant_type</span> <span style="color: #98be65;">"client_credentials"</span><span style="color: #b0b0b3;">}</span><span style="color: #aebed8;">}</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">]</span>
+    <span style="color: #b0b1a3;">(</span><span style="color: #61afef;">json</span><span style="color: #abb2bf; background-color: #282c34;">/</span>read-str <span style="color: #97b098;">(</span>ret <span style="color: #61afef; font-weight: bold;">:body</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">)</span><span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+</pre>
+</div>
+
+<p>
+He goes on to show an example of how you would call an authenticated
+API using the token you get from the above method.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-clojure">&lt;&lt;authenticate&gt;&gt;
+
+<span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">defn</span> <span style="color: #61afef;">auth0-connections</span>
+  <span style="color: #93a8c6;">[</span>tok<span style="color: #93a8c6;">]</span>
+  <span style="color: #93a8c6;">(</span><span style="color: #c678dd; font-weight: bold;">let</span> <span style="color: #b0b1a3;">[</span>ret <span style="color: #97b098;">(</span><span style="color: #61afef;">client</span><span style="color: #abb2bf; background-color: #282c34;">/</span>get <span style="color: #98be65;">"https://jemez.auth0.com/api/connections"</span>
+                        <span style="color: #aebed8;">{</span><span style="color: #61afef; font-weight: bold;">:debug</span> <span style="color: #da8548; font-weight: bold;">false</span>
+                         <span style="color: #61afef; font-weight: bold;">:content-type</span> <span style="color: #61afef; font-weight: bold;">:json</span>
+                         <span style="color: #61afef; font-weight: bold;">:accept</span> <span style="color: #61afef; font-weight: bold;">:json</span>
+                         <span style="color: #61afef; font-weight: bold;">:headers</span> <span style="color: #b0b0b3;">{</span><span style="color: #98be65;">"Authorization"</span> <span style="color: #90a890;">(</span>format <span style="color: #98be65;">"Bearer %s"</span> tok<span style="color: #90a890;">)</span><span style="color: #b0b0b3;">}</span><span style="color: #aebed8;">}</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">]</span>
+    <span style="color: #b0b1a3;">(</span>ret <span style="color: #61afef; font-weight: bold;">:body</span><span style="color: #b0b1a3;">)</span><span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org2b51390" class="outline-3">
+<h3 id="org2b51390"><span class="section-number-3">2.9</span> Handling XML</h3>
+<div class="outline-text-3" id="text-2-9">
+<p>
+Rest doesn't mandate the serialisation standard to be used when
+communicating between the client and the server.  Even so JSON is by
+far the most popular and is often confused by those less experienced
+as being RESTFUL.  XML may also be used as a serialisation standard.
+</p>
+
+<p>
+Here we'll demo how that can be done.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-clojure"><span style="color: #8c8c8c;">(</span>require '<span style="color: #93a8c6;">[</span><span style="color: #61afef;">clojure.data.xml</span> <span style="color: #61afef; font-weight: bold;">:as</span> xml<span style="color: #93a8c6;">]</span><span style="color: #8c8c8c;">)</span>
+
+<span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">def</span> <span style="color: #61afef;">raw-proj-string</span> <span style="color: #9eac8c;">"&lt;project&gt;</span>
+<span style="color: #9eac8c;">  &lt;proj-name&gt;olingquit&lt;/proj-name&gt;</span>
+<span style="color: #9eac8c;">  &lt;name&gt;The Important Olingquit Project&lt;/name&gt;</span>
+<span style="color: #9eac8c;">  &lt;framework&gt;Rails&lt;/framework&gt;</span>
+<span style="color: #9eac8c;">  &lt;language&gt;Ruby&lt;/language&gt;</span>
+<span style="color: #9eac8c;">  &lt;repo&gt;https://gitlab.com/srehorn/olingquit&lt;/repo&gt;</span>
+<span style="color: #9eac8c;">  &lt;/project&gt;"</span><span style="color: #8c8c8c;">)</span>
+
+<span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">def</span> <span style="color: #61afef;">proj-xml</span> <span style="color: #93a8c6;">(</span><span style="color: #61afef;">xml</span><span style="color: #abb2bf; background-color: #282c34;">/</span>parse-str raw-proj-string<span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+
+<span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">defn</span> <span style="color: #61afef;">get-by-tag</span>
+  <span style="color: #93a8c6;">[</span>proj-map tag<span style="color: #93a8c6;">]</span>
+  <span style="color: #93a8c6;">(</span><span style="color: #c678dd; font-weight: bold;">-&gt;&gt;</span> proj-map
+       <span style="color: #61afef; font-weight: bold;">:content</span>
+       <span style="color: #b0b1a3;">(</span>filter #<span style="color: #97b098;">(</span>= <span style="color: #aebed8;">(</span><span style="color: #61afef; font-weight: bold;">:tag</span> <span style="color: #61afef;">%</span><span style="color: #aebed8;">)</span> tag<span style="color: #97b098;">)</span><span style="color: #b0b1a3;">)</span>
+       first
+       <span style="color: #61afef; font-weight: bold;">:content</span>
+       first<span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+
+<span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">defn</span> <span style="color: #61afef;">xml-str-to-project</span>
+  <span style="color: #93a8c6;">[</span>xml-string<span style="color: #93a8c6;">]</span>
+  <span style="color: #93a8c6;">(</span><span style="color: #c678dd; font-weight: bold;">let</span> <span style="color: #b0b1a3;">[</span>xml <span style="color: #97b098;">(</span><span style="color: #61afef;">xml</span><span style="color: #abb2bf; background-color: #282c34;">/</span>parse-str xml-string<span style="color: #97b098;">)</span><span style="color: #b0b1a3;">]</span>
+    <span style="color: #b0b1a3;">{</span><span style="color: #61afef; font-weight: bold;">:proj-name</span> <span style="color: #97b098;">(</span>get-by-tag xml <span style="color: #61afef; font-weight: bold;">:proj-name</span><span style="color: #97b098;">)</span>
+     <span style="color: #61afef; font-weight: bold;">:name</span>      <span style="color: #97b098;">(</span>get-by-tag xml <span style="color: #61afef; font-weight: bold;">:name</span><span style="color: #97b098;">)</span>
+     <span style="color: #61afef; font-weight: bold;">:framework</span> <span style="color: #97b098;">(</span>get-by-tag xml <span style="color: #61afef; font-weight: bold;">:framework</span><span style="color: #97b098;">)</span>
+     <span style="color: #61afef; font-weight: bold;">:language</span>  <span style="color: #97b098;">(</span>get-by-tag xml <span style="color: #61afef; font-weight: bold;">:language</span><span style="color: #97b098;">)</span>
+     <span style="color: #61afef; font-weight: bold;">:repo</span>      <span style="color: #97b098;">(</span>get-by-tag xml <span style="color: #61afef; font-weight: bold;">:repo</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">}</span><span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+
+<span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">defn</span> <span style="color: #61afef;">project-to-xml-str</span>
+  <span style="color: #93a8c6;">[</span>project<span style="color: #93a8c6;">]</span>
+  <span style="color: #93a8c6;">(</span><span style="color: #b0b1a3;">(</span><span style="color: #61afef;">xml</span><span style="color: #abb2bf; background-color: #282c34;">/</span>element <span style="color: #61afef; font-weight: bold;">:project</span> <span style="color: #97b098;">{}</span>
+                <span style="color: #97b098;">(</span><span style="color: #61afef;">xml</span><span style="color: #abb2bf; background-color: #282c34;">/</span>element <span style="color: #61afef; font-weight: bold;">:_id</span>       <span style="color: #aebed8;">{}</span> <span style="color: #aebed8;">(</span><span style="color: #61afef; font-weight: bold;">.toString</span> <span style="color: #b0b0b3;">(</span><span style="color: #61afef; font-weight: bold;">:_id</span>       project<span style="color: #b0b0b3;">)</span><span style="color: #aebed8;">)</span><span style="color: #97b098;">)</span>
+                <span style="color: #97b098;">(</span><span style="color: #61afef;">xml</span><span style="color: #abb2bf; background-color: #282c34;">/</span>element <span style="color: #61afef; font-weight: bold;">:proj-name</span> <span style="color: #aebed8;">{}</span> <span style="color: #aebed8;">(</span><span style="color: #61afef; font-weight: bold;">.toString</span> <span style="color: #b0b0b3;">(</span><span style="color: #61afef; font-weight: bold;">:proj-name</span> project<span style="color: #b0b0b3;">)</span><span style="color: #aebed8;">)</span><span style="color: #97b098;">)</span>
+                <span style="color: #97b098;">(</span><span style="color: #61afef;">xml</span><span style="color: #abb2bf; background-color: #282c34;">/</span>element <span style="color: #61afef; font-weight: bold;">:name</span>      <span style="color: #aebed8;">{}</span> <span style="color: #aebed8;">(</span><span style="color: #61afef; font-weight: bold;">.toString</span> <span style="color: #b0b0b3;">(</span><span style="color: #61afef; font-weight: bold;">:name</span>      project<span style="color: #b0b0b3;">)</span><span style="color: #aebed8;">)</span><span style="color: #97b098;">)</span>
+                <span style="color: #97b098;">(</span><span style="color: #61afef;">xml</span><span style="color: #abb2bf; background-color: #282c34;">/</span>element <span style="color: #61afef; font-weight: bold;">:framework</span> <span style="color: #aebed8;">{}</span> <span style="color: #aebed8;">(</span><span style="color: #61afef; font-weight: bold;">.toString</span> <span style="color: #b0b0b3;">(</span><span style="color: #61afef; font-weight: bold;">:framework</span> project<span style="color: #b0b0b3;">)</span><span style="color: #aebed8;">)</span><span style="color: #97b098;">)</span>
+                <span style="color: #97b098;">(</span><span style="color: #61afef;">xml</span><span style="color: #abb2bf; background-color: #282c34;">/</span>element <span style="color: #61afef; font-weight: bold;">:repo</span>      <span style="color: #aebed8;">{}</span> <span style="color: #aebed8;">(</span><span style="color: #61afef; font-weight: bold;">.toString</span> <span style="color: #b0b0b3;">(</span><span style="color: #61afef; font-weight: bold;">:repo</span>      project<span style="color: #b0b0b3;">)</span><span style="color: #aebed8;">)</span><span style="color: #97b098;">)</span>
+                <span style="color: #97b098;">(</span><span style="color: #61afef;">xml</span><span style="color: #abb2bf; background-color: #282c34;">/</span>element <span style="color: #61afef; font-weight: bold;">:language</span>  <span style="color: #aebed8;">{}</span> <span style="color: #aebed8;">(</span><span style="color: #61afef; font-weight: bold;">.toString</span> <span style="color: #b0b0b3;">(</span><span style="color: #61afef; font-weight: bold;">:language</span>  project<span style="color: #b0b0b3;">)</span><span style="color: #aebed8;">)</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">)</span><span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org0a6868c" class="outline-2">
+<h2 id="org0a6868c"><span class="section-number-2">3</span> Testing the Service</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+This section serves to list some simple requests which you can make to
+the service.
+</p>
+</div>
+
+<div id="outline-container-orga4261d3" class="outline-3">
+<h3 id="orga4261d3"><span class="section-number-3">3.1</span> Get Projects</h3>
+<div class="outline-text-3" id="text-3-1">
+<p>
+You can list all of the projects in the database with a get on
+<code>/Projects</code>.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-http"><span style="color: #da8548; font-weight: bold;">GET</span> <span style="color: #61afef;">http://localhost:8080/projects</span>
+x-catalog-token<span style="color: #687080; font-style: italic;">:</span> o brave new world
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgb7fa859" class="outline-3">
+<h3 id="orgb7fa859"><span class="section-number-3">3.2</span> Get a Project By Name</h3>
+<div class="outline-text-3" id="text-3-2">
+<p>
+You can get any project by it's name.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-http"><span style="color: #da8548; font-weight: bold;">GET</span> <span style="color: #61afef;">http://localhost:8080/projects/staggering-echidna</span>
+x-catalog-token<span style="color: #687080; font-style: italic;">:</span> o brave new world
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org4c60880" class="outline-3">
+<h3 id="org4c60880"><span class="section-number-3">3.3</span> Creating a Project</h3>
+<div class="outline-text-3" id="text-3-3">
+<p>
+The following will create a project with the name
+"staggering-echidna".  Initially I had a problem with this because I
+had removed the interceptor in the chain of interceptors for posting
+which actually parsed the body content.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-http"><span style="color: #da8548; font-weight: bold;">POST</span> <span style="color: #61afef;">http://localhost:8080/projects</span>
+<span style="color: #61afef;">Content-Type</span><span style="color: #687080; font-style: italic;">:</span> <span style="color: #98be65;">application/json</span>
+x-catalog-token<span style="color: #687080; font-style: italic;">:</span> o brave new world
+
+<span style="color: #687080; font-style: italic;">{</span><span style="color: #98be65;">"name"</span><span style="color: #687080; font-style: italic;">:</span> <span style="color: #98be65;">"Staggering Echidna"</span><span style="color: #687080; font-style: italic;">,</span>
+ <span style="color: #98be65;">"framework"</span><span style="color: #687080; font-style: italic;">:</span> <span style="color: #98be65;">"Pedastal"</span><span style="color: #687080; font-style: italic;">,</span>
+ <span style="color: #98be65;">"language"</span><span style="color: #687080; font-style: italic;">:</span> <span style="color: #98be65;">"Clojure"</span><span style="color: #687080; font-style: italic;">,</span>
+ <span style="color: #98be65;">"repo"</span><span style="color: #687080; font-style: italic;">:</span> <span style="color: #98be65;">"http://gitlab.com/srehorn/staggering-echidna"</span><span style="color: #687080; font-style: italic;">,</span>
+ <span style="color: #98be65;">"proj-name"</span><span style="color: #687080; font-style: italic;">:</span> <span style="color: #98be65;">"staggering-echidna"</span><span style="color: #687080; font-style: italic;">}</span>
+</pre>
+</div>
+
+<p>
+You can also create a project by XML.  Although this isn't working
+right now.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-http"><span style="color: #da8548; font-weight: bold;">POST</span> <span style="color: #61afef;">http://localhost:8080/projects-xml</span>
+<span style="color: #61afef;">Content-Type</span><span style="color: #687080; font-style: italic;">:</span> <span style="color: #98be65;">application/xml</span>
+x-catalog-token<span style="color: #687080; font-style: italic;">:</span> o brave new world
+
+&lt;project&gt;
+  &lt;proj-name&gt;olingquit&lt;/proj-name&gt;
+  &lt;name&gt;The Important Olingquit Project&lt;/name&gt;
+  &lt;framework&gt;Rails&lt;/framework&gt;
+  &lt;language&gt;Ruby&lt;/language&gt;
+  &lt;repo&gt;https<span style="color: #687080; font-style: italic;">:</span>//gitlab.com/srehorn/olingquit&lt;/repo&gt;
+&lt;/project&gt;
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgea4ee6f" class="outline-3">
+<h3 id="orgea4ee6f"><span class="section-number-3">3.4</span> Searching Github</h3>
+<div class="outline-text-3" id="text-3-4">
+<p>
+You can also get additional details on similar projects with the
+see-also API method.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-http"><span style="color: #da8548; font-weight: bold;">GET</span> http<span style="color: #687080; font-style: italic;">:</span>//localhost<span style="color: #687080; font-style: italic;">:</span>8080/see-also<span style="color: #687080; font-style: italic;">?</span><span style="color: #61afef;">q</span><span style="color: #687080; font-style: italic;">=</span><span style="color: #98be65;">sequence</span>
+x-catalog-token<span style="color: #687080; font-style: italic;">:</span> o brave new world
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="date">Date: 2017-04-05 Wed 00:00</p>
+<p class="author">Author: Edward John Steere</p>
+<p class="date">Created: 2017-05-09 Tue 19:39</p>
+<p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
+</div>
+</body>
+</html>

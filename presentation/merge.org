@@ -14,7 +14,6 @@
 #+HTML_HEAD: <link rel="stylesheet" type="text/css" href="bootstrap.css" />
 #+HTML_HEAD: <link rel="stylesheet" type="text/css" href="base.css" />
 #+CREATOR: <a href="http://www.gnu.org/software/emacs/">Emacs</a> 26.0.50 (<a href="http://orgmode.org">Org</a> mode 9.0.5)
-#+LATEX_HEADER:
 
 * Merge Sort
 The trick is to sort every singleton list and then sort the

@@ -11,6 +11,15 @@
 #+SELECT_TAGS: export
 #+EXCLUDE_TAGS: noexport
 #+CREATOR: Emacs 26.0.50.1 (Org mode 9.0.5)
+#+STARTUP: showall
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="bootstrap.css" />
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="base.css" />
+#+CREATOR: <a href="http://www.gnu.org/software/emacs/">Emacs</a> 26.0.50 (<a href="http://orgmode.org">Org</a> mode 9.0.5)
+#+OPTIONS: html-link-use-abs-url:nil html-postamble:auto
+#+OPTIONS: html-preamble:t html-scripts:t html-style:t
+#+OPTIONS: html5-fancy:nil tex:t
+#+HTML_DOCTYPE: xhtml-strict
+#+HTML_CONTAINER: div
 
 * Introduction
 This is a literate program which demonstrates the power of using
@@ -89,7 +98,7 @@ The micro service has been broken down into components which appear in
 the order of greatest interest first.  The service itself is simply
 the composition of these components as follows:
 
-#+BEGIN_SRC clojure :noweb yes :results none :tangle src/service.clj
+#+BEGIN_SRC clojure :noweb tangle :results none :tangle src/service.clj
   (ns project-catalog.service)
 
   <<server>>
@@ -115,7 +124,7 @@ difference between the vector version and some of the other routes
 for them.  What I ended up needing to do was add a =:route-name=
 keyword with a keyword name following it for that route.
 
-#+BEGIN_SRC clojure :noweb yes :noweb-ref routes :results none
+#+BEGIN_SRC clojure :noweb tangle :noweb-ref routes :results none
   <<token>>
   <<services>>
 
@@ -153,7 +162,7 @@ Java HTTP client library) to make the calls.
 Each route is routed to a service.  We define those services with a
 single function which we define as follows:
 
-#+BEGIN_SRC clojure :noweb yes :noweb-ref services :results none
+#+BEGIN_SRC clojure :noweb tangle :noweb-ref services :results none
   <<get-project>>
   <<http-client>>
 
@@ -260,7 +269,7 @@ Pedestal requires a definition of the service as a whole which
 includes everything that the server needs in order to start up a
 server with the required stuff.
 
-#+BEGIN_SRC clojure :noweb yes :noweb-ref pedestal-service :results none
+#+BEGIN_SRC clojure :noweb tangle :noweb-ref pedestal-service :results none
   <<routes>>
 
   (require '[io.pedestal.http :as http])
@@ -420,7 +429,7 @@ the service.
 You can list all of the projects in the database with a get on
 =/Projects=.
 
-#+BEGIN_SRC http :pretty :results code
+#+BEGIN_SRC http :pretty :results code :exports both
   GET http://localhost:8080/projects
   x-catalog-token: o brave new world
 #+END_SRC
@@ -446,7 +455,7 @@ You can list all of the projects in the database with a get on
 ** Get a Project By Name
 You can get any project by it's name.
 
-#+BEGIN_SRC http :pretty :results code
+#+BEGIN_SRC http :pretty :results code :exports both
   GET http://localhost:8080/projects/staggering-echidna
   x-catalog-token: o brave new world
 #+END_SRC
@@ -457,7 +466,7 @@ The following will create a project with the name
 had removed the interceptor in the chain of interceptors for posting
 which actually parsed the body content.
 
-#+BEGIN_SRC http :pretty :results code
+#+BEGIN_SRC http :pretty :results code :exports both
   POST http://localhost:8080/projects
   Content-Type: application/json
   x-catalog-token: o brave new world
@@ -475,7 +484,8 @@ which actually parsed the body content.
 #+END_SRC
 
 You can also create a project by XML.  Although this isn't working
-right now.
+right now.  The response to this one is a bit too big so we'll exclude
+it from the weaved document.
 
 #+BEGIN_SRC http :pretty :results code
   POST http://localhost:8080/projects-xml
@@ -700,7 +710,8 @@ Context:
 
 ** Searching Github
 You can also get additional details on similar projects with the
-see-also API method.
+see-also API method.  This one also has a huge response so we'll leave
+it out of the weaved document too.
 
 #+BEGIN_SRC http :pretty :results code
   GET http://localhost:8080/see-also?q=sequence
