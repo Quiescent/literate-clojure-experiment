@@ -55,6 +55,9 @@
 #+BEGIN_EXPORT html
 <iframe width="835" height="480" src="https://www.youtube.com/embed/Av0PQDVTP4A?rel=0#t=0m56s" frameborder="0" allowfullscreen></iframe>
 #+END_EXPORT
+#+BEGIN_NOTES
+0:56 -> 6:50
+#+END_NOTES
 * What is Literate Programming?
 ** We Try to Write Code Which Reads Well
 #+BEGIN_NOTES
