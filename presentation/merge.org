@@ -1,0 +1,63 @@
+#+OPTIONS: html-link-use-abs-url:nil html-postamble:auto
+#+OPTIONS: html-preamble:t html-scripts:t html-style:t
+#+OPTIONS: html5-fancy:nil tex:t
+#+HTML_DOCTYPE: xhtml-strict
+#+HTML_CONTAINER: div
+#+DESCRIPTION:
+#+KEYWORDS:
+#+HTML_LINK_HOME:
+#+HTML_LINK_UP:
+#+HTML_MATHJAX:
+#+HTML_HEAD:
+#+HTML_HEAD_EXTRA:
+#+SUBTITLE:
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="bootstrap.css" />
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="base.css" />
+#+CREATOR: <a href="http://www.gnu.org/software/emacs/">Emacs</a> 26.0.50 (<a href="http://orgmode.org">Org</a> mode 9.0.5)
+#+LATEX_HEADER:
+
+* Merge Sort
+The trick is to sort every singleton list and then sort the
+resulting combinations of lists until there is only one list
+left.
+
+#+BEGIN_SRC clojure :noweb tangle :tangle merge.clj
+  (defn merge-sort
+    [xs]
+    (let [pairs
+          <<pairs>>]
+      (loop [lists (map list xs)]
+        (if (> 1 (length lists))
+          (recur (map
+                  <<merge>> (pairs lists)))
+          (first lists)))))
+#+END_SRC
+
+Given two sorted lists, xs and ys we can create a sorted list zs, 
+by consuming the next smallest element from either.  If one of 
+them is empty then we then we simply concatenate it to the 
+result list.
+
+#+BEGIN_SRC clojure :noweb-ref merge
+  (fn merge
+    [xs ys zs]
+    (let [other-list (if (empty? ys) xs (if (empty? xs) ys) nil)]
+      (if (null? empty-list)
+        (let [x (first xs)
+              y (first ys)]
+          (if (<= x y)
+            (merge (rest xs) ys        (cons x zs))
+            (merge xs        (rest ys) (cons y zs)))))
+      (concat other-list zs)))
+#+END_SRC
+
+To get the pairs of lists we take two then drop two until there's
+nothing left.
+
+#+BEGIN_SRC clojure :noweb-ref pairs
+  (fn pairs
+    [xs]
+    (if (empty? xs) xs
+        (cons (take 2 xs)
+              (pairs (drop 2 xs)))))
+#+END_SRC

@@ -4,9 +4,9 @@
 #+OPTIONS: p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t
 #+OPTIONS: timestamp:t title:t toc:nil todo:t |:t
 #+TITLE: Tangling Parentheses from Prose
-#+DATE: <2017-05-06 Sat>
+#+DATE: 
 #+AUTHOR: Edward John Steere
-#+EMAIL: edward.steere@gmail.com
+#+EMAIL: 
 #+LANGUAGE: en
 #+SELECT_TAGS: export
 #+EXCLUDE_TAGS: noexport
@@ -25,7 +25,7 @@
 #+REVEAL_THEME: sky
 #+REVEAL_EXTRA_CSS:
 #+REVEAL_EXTRA_JS:
-#+REVEAL_HLEVEL:
+#+REVEAL_HLEVEL: 1
 #+REVEAL_TITLE_SLIDE_BACKGROUND:
 #+REVEAL_TITLE_SLIDE_BACKGROUND_SIZE:
 #+REVEAL_TITLE_SLIDE_BACKGROUND_POSITION:
@@ -55,65 +55,227 @@
 #+BEGIN_EXPORT html
 <iframe width="835" height="480" src="https://www.youtube.com/embed/Av0PQDVTP4A?rel=0#t=0m56s" frameborder="0" allowfullscreen></iframe>
 #+END_EXPORT
-* What is Literate Programming
-#+BEGIN_NOTES
-We Try to Write Code Which Reads Well
-#+END_NOTES
-* What is Literate Programming
+* What is Literate Programming?
+** We Try to Write Code Which Reads Well
 #+BEGIN_NOTES
 In Clojure We Generally Succeed
 #+END_NOTES
-* What is Literate Programming
+** Can You Tell me Why this Code Was Written?
+#+BEGIN_SRC clojure
+(defn counted-thread-factory
+  "Create a ThreadFactory that maintains a counter for 
+     naming Threads. name-format specifies thread 
+     names - use %d to include counter
+     daemon is a flag for whether threads are
+     daemons or not"
+  [name-format daemon]
+  (let [counter (atom 0)]
+    (reify
+      ThreadFactory
+      (newThread [this runnable]
+        (doto (Thread. runnable)
+          (.setName (format name-format (swap! counter inc)))
+          (.setDaemon daemon))))))
+#+END_SRC
 #+BEGIN_NOTES
-Can You Tell me Why this Code Was Written
+This code comes from the core.async library.  It's pretty easy to read
+what it's doing.  It's pretty hard to figure out why we need it
+without some kind of external knowledge.
 #+END_NOTES
-# (perhaps take some code from a core library?)
-* What is Literate Programming
+
+** Coding in English Can Suck
+#+BEGIN_SRC cobol
+  PROCEDURE DIVISION.
+      DISPLAY "Enter first number  (1 digit) : " WITH NO ADVANCING.
+      ACCEPT Num1.
+      DISPLAY "Enter second number (1 digit) : " WITH NO ADVANCING.
+      ACCEPT Num2.
+      MULTIPLY Num1 BY Num2 GIVING Result.
+      DISPLAY "Result is = ", Result.
+      STOP RUN.
+#+END_SRC
+#+BEGIN_NOTES
+Any language designed to read more like English ends up looking as if
+you speak formal English to a Woman who you're trying to ask out on a
+date.  It's not going to go well.  You're going to end up having to
+declare all sorts of things in advance and things are just doomed to
+fail.
+#+END_NOTES
+
+** What About Using Long Names?
+
+#+BEGIN_SRC java
+
+#+END_SRC
+
 #+BEGIN_NOTES
 Telling a Computer What to do in an English Like Style Sucks
 #+END_NOTES
-# (put up some Java code?)
-# (put up some Delphi code?)
-# (put up some Cobol code?)
-* What is Literate Programming
+
+** Spring is Supposed to Make things Better, but...
+
+AbstractSingletonProxyFactoryBean: a proxy factory bean for you to
+subclass so that you can proxy factory beans that create singletons.
+
+(source: https://www.quora.com/What-are-the-most-ridiculous-Java-class-names-from-real-code)
+
+** Another Case in Point
+
+#+BEGIN_SRC java
+  public class QuoteClient extends WebServiceGatewaySupport {
+      private static final Logger log = LoggerFactory
+          .getLogger(QuoteClient.class);
+      public GetQuoteResponse getQuote(String ticker) {
+          GetQuote request = new GetQuote();
+          request.setSymbol(ticker);
+          log.info("Requesting quote for " + ticker);
+          GetQuoteResponse response = (GetQuoteResponse)
+              getWebServiceTemplate()
+              .marshalSendAndReceive(
+                  "http://www.webservicex.com/stockquote.asmx",
+                  request,
+                  new SoapActionCallback("http://www.webserviceX.NET/GetQuote"));
+          return response;
+      }
+  }
+#+END_SRC
+
 #+BEGIN_NOTES
-Telling a Human How to do Something with Code Also Sucks
+This is supposed to be simple.
 #+END_NOTES
-# (tell a gardener to clean the garden with map)
-# (tell a friend to get coffee nearby with reduce)
-# (tell your family about your overseas trip with filter)
-* What is Literate Programming
+
+* How About We Swap Out English for Clojure?
+** 
+#+BEGIN_SRC clojure
+  (map pull-out-weeds flower-patches)
+#+END_SRC
 #+BEGIN_NOTES
-Natural Language + Code = Mind Blown
+Telling a Human How to do Something with Code Also Sucks.  Let's tell
+Oscar, our gardener to pull all of the weeds out of the flower patch.
+Oh no!  We forgot to tell him to be careful about the bulbs with no
+sprouts which we've planted but aren't yet visible!
+#+END_NOTES
+** 
+#+BEGIN_SRC clojure
+  (let [only-weeds (partial filter is-flower-or-bulb)]
+    (map (comp pull-out-weeds only-weeds) flower-patches))
+#+END_SRC
+#+BEGIN_NOTES
+There we go.  Isn't that much better.
+#+END_NOTES
+** 
+#+BEGIN_SRC clojure
+  (let [cappuccino-ingredients '(steamed-milk espresso foam)
+        empty-cup              '()
+        pour                   (fn [liquid cup] (cons liquid cup))]
+    (reduce (fn [ingredient coffee]
+              (if (contains? cappuccino-ingredients ingredient)
+                (pour ingredient coffee)
+                coffee))
+            empty-cup
+            '(steamed-milk knife cold-milk hot-water espresso
+              muffin foam chocolate-syrup sprinkles coffee-grinder
+              unpaid-e-toll filter-coffee)))
+#+END_SRC
+
+#+BEGIN_NOTES
+But what if we want to describe how to make a really good coffee?
+Let's try it with some flair this time!  Well my friend let me tell
+you.  You simply let cappuccino ingredients be the list containing
+steamed-milk, espresso and foam.  Grab yourself an empty list and name
+it by the vessel into which our delectable stimulant will appear.
+Dunno how to pour, well that's fine because all we need to do is join
+one liquid straight onto the head of the rest.
+
+Ready for the magical part?  Oldest trick in the book, we simply look
+at everything coffee related in the kitchen until we find the things
+which are part of the cappuccino ingredients and pour them in.  Enjoy.
 #+END_NOTES
 * What is Literate Programming
+** Docstrings...
+
+| java.lang.String | beanName                                                                    |
+|                  | The ejb-name of the Enterprise Java Bean to which this reference is mapped. |
+| java.lang.String | description                                                                 |
+|                  | A string describing the bean.                                               |
 #+BEGIN_NOTES
 You Might Be Thinking of Docstrings
-#+END_NOTES
-* What is Literate Programming
-#+BEGIN_NOTES
 You Are Wrong! -- Who Understands EJBs by Reading the Doc
 #+END_NOTES
-* What is Literate Programming
+
+** Invented by Knuth
+
+[[./Knuth-Is-My-Homeboy.png]]
+
+(source: https://blog.codinghorror.com/the-enduring-art-of-computer-programming/)
+
+** Write a Document which Happens to Contain Code
 #+BEGIN_NOTES
 Idea is Simpler
-#+END_NOTES
-* What is Literate Programming
-#+BEGIN_NOTES
+Natural Language + Code = Mind Blown
 Talk About the Idea and Sprinkle in Some Code When Needed
 #+END_NOTES
-* What is Literate Programming
+
+** 
+#+BEGIN_SRC org
+  ,* Merge Sort
+  The trick is to sort every singleton list and then sort the
+  resulting combinations of lists until there is only one list
+  left.
+
+  ,#+BEGIN_SRC clojure
+    (defn merge-sort
+      [xs]
+      (let [pairs
+            <<pairs>>]
+        (loop [lists (map list xs)]
+          (if (> 1 (length lists))
+            (recur (map
+                    <<merge>> (pairs lists)))
+            (first lists)))))
+  ,#+END_SRC
+#+END_SRC
+
+** 
+#+BEGIN_SRC org
+  Given two sorted lists, xs and ys we can create a sorted list zs, 
+  by consuming the next smallest element from either.  If one of 
+  them is empty then we then we simply concatenate it to the 
+  result list.
+  ,#+BEGIN_SRC clojure :noweb-ref merge
+    (fn merge
+      [xs ys zs]
+      (let [other-list (if (empty? ys) xs (if (empty? xs) ys) nil)]
+        (if (null? empty-list)
+          (let [x (first xs)
+                y (first ys)]
+            (if (<= x y)
+              (merge (rest xs) ys        (cons x zs))
+              (merge xs        (rest ys) (cons y zs)))))
+        (concat other-list zs)))
+  ,#+END_SRC
+#+END_SRC
+
+** 
+#+BEGIN_SRC org
+  To get the pairs of lists we take two then drop two until there's
+  nothing left.
+
+  ,#+BEGIN_SRC clojure
+    (fn pairs
+      [xs]
+      (if (empty? xs) xs
+          (cons (take 2 xs)
+                (pairs (drop 2 xs)))))
+  ,#+END_SRC
+#+END_SRC
+
+** Tangling and Weaving
 #+BEGIN_NOTES
 Two Principles: Tangle and Weave
 #+END_NOTES
-* Demo Some Clojure Literate Programming
-** Day 24 (Need to Translate)
-** Zoom in and Explain Some Functions
-** Why Did I Do it This Way (What did Ed of Last Year See?!)
-** Literate Version (Core Idea First)
-* Show them the Micro Service Code
-** Searching for Parts of the System
-** Reading the Description and Stuff
-** Update a Route to Greet Everyone at the Meetup
-* Show them the Micro Service Document
+* Real(ish) Project Time!
 
+[[./Your-Lecture-Is-Interesting.jpg]]
+
+(source: http://myhashapp.com/blog/?p=44)

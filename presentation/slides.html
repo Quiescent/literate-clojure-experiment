@@ -26,29 +26,27 @@
 <body>
 <div class="reveal">
 <div class="slides">
-<section id="sec-title-slide" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition=""><h1 class="title">Tangling Parentheses from Prose</h1><h2 class="author">Edward John Steere</h2><h2 class="date">2017-05-06 Sat 00:00</h2><p class="date">Created: 2017-05-06 Sat 12:23</p>
+<section id="sec-title-slide" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition=""><h1 class="title">Tangling Parentheses from Prose</h1><h2 class="author">Edward John Steere</h2><p class="date">Created: 2017-05-09 Tue 18:20</p>
 </section>
 
-<section id="slide-org982ad8a" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<section>
+<section id="slide-org551c767" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
 <div class="slide-header"></div>
-<h2 id="org982ad8a">Story Time</h2>
+<h2 id="org551c767">Story Time</h2>
 <iframe width="835" height="480" src="https://www.youtube.com/embed/Av0PQDVTP4A?rel=0#t=0m56s" frameborder="0" allowfullscreen></iframe>
 <div class="slide-footer"></div>
 </section>
-<section id="slide-org139517c" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
-<div class="slide-header"></div>
-<h2 id="org139517c">What is Literate Programming</h2>
-<aside class="notes">
-<p>
-We Try to Write Code Which Reads Well
-</p>
-
-</aside>
-<div class="slide-footer"></div>
 </section>
-<section id="slide-orgebeff9c" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<section>
+<section id="slide-org56e1a75" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
 <div class="slide-header"></div>
-<h2 id="orgebeff9c">What is Literate Programming</h2>
+<h2 id="org56e1a75">What is Literate Programming?</h2>
+<div class="outline-text-2" id="text-org56e1a75">
+</div><div class="slide-footer"></div>
+</section>
+<section id="slide-org778c7b6" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h3 id="org778c7b6">We Try to Write Code Which Reads Well</h3>
 <aside class="notes">
 <p>
 In Clojure We Generally Succeed
@@ -57,121 +55,390 @@ In Clojure We Generally Succeed
 </aside>
 <div class="slide-footer"></div>
 </section>
-<section id="slide-org7e74db1" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<section id="slide-org6114c0a" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
 <div class="slide-header"></div>
-<h2 id="org7e74db1">What is Literate Programming</h2>
+<h3 id="org6114c0a">Can You Tell me Why this Code Was Written?</h3>
+<div class="org-src-container">
+
+<pre  class="src src-clojure"><span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">defn</span> <span style="color: #61afef;">counted-thread-factory</span>
+  <span style="color: #9eac8c;">"Create a ThreadFactory that maintains a counter for </span>
+<span style="color: #9eac8c;">     naming Threads. name-format specifies thread </span>
+<span style="color: #9eac8c;">     names - use %d to include counter</span>
+<span style="color: #9eac8c;">     daemon is a flag for whether threads are</span>
+<span style="color: #9eac8c;">     daemons or not"</span>
+  <span style="color: #93a8c6;">[</span>name-format daemon<span style="color: #93a8c6;">]</span>
+  <span style="color: #93a8c6;">(</span><span style="color: #c678dd; font-weight: bold;">let</span> <span style="color: #b0b1a3;">[</span>counter <span style="color: #97b098;">(</span>atom 0<span style="color: #97b098;">)</span><span style="color: #b0b1a3;">]</span>
+    <span style="color: #b0b1a3;">(</span>reify
+      <span style="color: #61afef;">ThreadFactory</span>
+      <span style="color: #97b098;">(</span><span style="color: #61afef; font-weight: bold;">newThread</span> <span style="color: #aebed8;">[</span>this runnable<span style="color: #aebed8;">]</span>
+        <span style="color: #aebed8;">(</span><span style="color: #c678dd; font-weight: bold;">doto</span> <span style="color: #b0b0b3;">(</span><span style="color: #61afef;">Thread.</span> runnable<span style="color: #b0b0b3;">)</span>
+          <span style="color: #b0b0b3;">(</span><span style="color: #61afef; font-weight: bold;">.setName</span> <span style="color: #90a890;">(</span>format name-format <span style="color: #a2b6da;">(</span>swap! counter inc<span style="color: #a2b6da;">)</span><span style="color: #90a890;">)</span><span style="color: #b0b0b3;">)</span>
+          <span style="color: #b0b0b3;">(</span><span style="color: #61afef; font-weight: bold;">.setDaemon</span> daemon<span style="color: #b0b0b3;">)</span><span style="color: #aebed8;">)</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">)</span><span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+</pre>
+</div>
 <aside class="notes">
 <p>
-Can You Tell me Why this Code Was Written
+This code comes from the core.async library.  It's pretty easy to read
+what it's doing.  It's pretty hard to figure out why we need it
+without some kind of external knowledge.
 </p>
 
 </aside>
-<p>
-(perhaps take some code from a core library?)
-</p>
-<div class="slide-footer"></div>
-</section>
-<section id="slide-org90feb10" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
-<div class="slide-header"></div>
-<h3 id="org90feb10">Telling a Computer What to do in an English Like Style Sucks</h3>
-<p>
-(put up some Java code?)
-(put up some Delphi code?)
-(put up some Cobol code?)
-</p>
-<div class="slide-footer"></div>
-</section>
-<section id="slide-org969ed86" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
-<div class="slide-header"></div>
-<h3 id="org969ed86">Telling a Human How to do Something with Code Also Sucks</h3>
-<p>
-(tell a gardener to clean the garden with map)
-(tell a friend to get coffee nearby with reduce)
-(tell your family about your overseas trip with filter)
-</p>
-<div class="slide-footer"></div>
-</section>
-<section id="slide-org8a1579e" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
-<div class="slide-header"></div>
-<h3 id="org8a1579e">Natural Language + Code = Mind Blown</h3>
-<div class="slide-footer"></div>
-</section>
-<section id="slide-org3698cd2" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
-<div class="slide-header"></div>
-<h3 id="org3698cd2">You Might Be Thinking of Docstrings</h3>
-<div class="slide-footer"></div>
-</section>
-<section id="slide-orgd949aba" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
-<div class="slide-header"></div>
-<h3 id="orgd949aba">You Are Wrong! &#x2013; Who Understands EJBs by Reading the Doc</h3>
 
 <div class="slide-footer"></div>
 </section>
-<section id="slide-org9615758" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<section id="slide-org6f17fc8" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
 <div class="slide-header"></div>
-<h3 id="org9615758">Idea is Simpler</h3>
+<h3 id="org6f17fc8">Coding in English Can Suck</h3>
+<div class="org-src-container">
+
+<pre  class="src src-cobol"><span style="color: #c678dd; font-weight: bold;">PROCEDURE</span> <span style="color: #c678dd; font-weight: bold;">DIVISION</span>.
+    <span style="color: #c678dd; font-weight: bold;">DISPLAY</span> <span style="color: #98be65;">"Enter first number  (1 digit) : "</span> <span style="color: #c678dd; font-weight: bold;">WITH</span> <span style="color: #c678dd; font-weight: bold;">NO</span> <span style="color: #c678dd; font-weight: bold;">ADVANCING</span>.
+    <span style="color: #c678dd; font-weight: bold;">ACCEPT</span> Num1.
+    <span style="color: #c678dd; font-weight: bold;">DISPLAY</span> <span style="color: #98be65;">"Enter second number (1 digit) : "</span> <span style="color: #c678dd; font-weight: bold;">WITH</span> <span style="color: #c678dd; font-weight: bold;">NO</span> <span style="color: #c678dd; font-weight: bold;">ADVANCING</span>.
+    <span style="color: #c678dd; font-weight: bold;">ACCEPT</span> Num2.
+    <span style="color: #c678dd; font-weight: bold;">MULTIPLY</span> Num1 <span style="color: #c678dd; font-weight: bold;">BY</span> Num2 <span style="color: #c678dd; font-weight: bold;">GIVING</span> Result.
+    <span style="color: #c678dd; font-weight: bold;">DISPLAY</span> <span style="color: #98be65;">"Result is = "</span>, Result.
+    <span style="color: #c678dd; font-weight: bold;">STOP</span> <span style="color: #c678dd; font-weight: bold;">RUN</span>.
+</pre>
+</div>
+<aside class="notes">
+<p>
+Any language designed to read more like English ends up looking as if
+you speak formal English to a Woman who you're trying to ask out on a
+date.  It's not going to go well.  You're going to end up having to
+declare all sorts of things in advance and things are just doomed to
+fail.
+</p>
+
+</aside>
+
 <div class="slide-footer"></div>
 </section>
-<section id="slide-org93d989c" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<section id="slide-org199096d" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
 <div class="slide-header"></div>
-<h3 id="org93d989c">Talk About the Idea and Sprinkle in Some Code When Needed</h3>
+<h3 id="org199096d">What About Using Long Names?</h3>
+<div class="org-src-container">
+
+<pre  class="src src-java"></pre>
+</div>
+
+<aside class="notes">
+<p>
+Telling a Computer What to do in an English Like Style Sucks
+</p>
+
+</aside>
+
 <div class="slide-footer"></div>
 </section>
-<section id="slide-org307aa79" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<section id="slide-org56da963" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
 <div class="slide-header"></div>
-<h3 id="org307aa79">Two Principles: Tangle and Weave</h3>
+<h3 id="org56da963">Spring is Supposed to Make things Better, but&#x2026;</h3>
+<p>
+AbstractSingletonProxyFactoryBean: a proxy factory bean for you to
+subclass so that you can proxy factory beans that create singletons.
+</p>
+
+<p>
+(source: <a href="https://www.quora.com/What-are-the-most-ridiculous-Java-class-names-from-real-code">https://www.quora.com/What-are-the-most-ridiculous-Java-class-names-from-real-code</a>)
+</p>
+
 <div class="slide-footer"></div>
 </section>
-<section id="slide-orga63a105" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<section id="slide-org5700f71" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
 <div class="slide-header"></div>
-<h2 id="orga63a105">Demo Some Clojure Literate Programming</h2>
-<div class="outline-text-2" id="text-orga63a105">
+<h3 id="org5700f71">Another Case in Point</h3>
+<div class="org-src-container">
+
+<pre  class="src src-java"><span style="color: #c678dd; font-weight: bold;">public</span> <span style="color: #c678dd; font-weight: bold;">class</span> <span style="color: #61afef;">QuoteClient</span> <span style="color: #c678dd; font-weight: bold;">extends</span> <span style="color: #61afef;">WebServiceGatewaySupport</span> <span style="color: #8c8c8c;">{</span>
+    <span style="color: #c678dd; font-weight: bold;">private</span> <span style="color: #c678dd; font-weight: bold;">static</span> <span style="color: #c678dd; font-weight: bold;">final</span> <span style="color: #61afef;">Logger</span> <span style="color: #61afef;">log</span> = LoggerFactory
+        .getLogger<span style="color: #93a8c6;">(</span>QuoteClient.<span style="color: #c678dd; font-weight: bold;">class</span><span style="color: #93a8c6;">)</span>;
+    <span style="color: #c678dd; font-weight: bold;">public</span> <span style="color: #61afef;">GetQuoteResponse</span> <span style="color: #61afef;">getQuote</span><span style="color: #93a8c6;">(</span><span style="color: #61afef;">String</span> <span style="color: #61afef;">ticker</span><span style="color: #93a8c6;">)</span> <span style="color: #93a8c6;">{</span>
+        <span style="color: #61afef;">GetQuote</span> <span style="color: #61afef;">request</span> = <span style="color: #c678dd; font-weight: bold;">new</span> <span style="color: #61afef;">GetQuote</span><span style="color: #b0b1a3;">()</span>;
+        request.setSymbol<span style="color: #b0b1a3;">(</span>ticker<span style="color: #b0b1a3;">)</span>;
+        log.info<span style="color: #b0b1a3;">(</span><span style="color: #98be65;">"Requesting quote for "</span> + ticker<span style="color: #b0b1a3;">)</span>;
+        <span style="color: #61afef;">GetQuoteResponse</span> <span style="color: #61afef;">response</span> = <span style="color: #b0b1a3;">(</span><span style="color: #61afef;">GetQuoteResponse</span><span style="color: #b0b1a3;">)</span>
+            getWebServiceTemplate<span style="color: #b0b1a3;">()</span>
+            .marshalSendAndReceive<span style="color: #b0b1a3;">(</span>
+                <span style="color: #98be65;">"http://www.webservicex.com/stockquote.asmx"</span>,
+                request,
+                <span style="color: #c678dd; font-weight: bold;">new</span> <span style="color: #61afef;">SoapActionCallback</span><span style="color: #97b098;">(</span><span style="color: #98be65;">"http://www.webserviceX.NET/GetQuote"</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">)</span>;
+        <span style="color: #c678dd; font-weight: bold;">return</span> response;
+    <span style="color: #93a8c6;">}</span>
+<span style="color: #8c8c8c;">}</span>
+</pre>
+</div>
+
+<aside class="notes">
+<p>
+This is supposed to be simple.
+</p>
+
+</aside>
+
+<div class="slide-footer"></div>
+</section>
+</section>
+<section>
+<section id="slide-org18016af" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h2 id="org18016af">How About We Swap Out English for Clojure?</h2>
+<div class="outline-text-2" id="text-org18016af">
 </div><div class="slide-footer"></div>
 </section>
-<section id="slide-org81e52d1" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<section id="slide-org83e2ee0" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
 <div class="slide-header"></div>
-<h3 id="org81e52d1">Day 24 (Need to Translate)</h3>
+<h3 id="org83e2ee0"></h3>
+<div class="org-src-container">
+
+<pre  class="src src-clojure"><span style="color: #8c8c8c;">(</span>map pull-out-weeds flower-patches<span style="color: #8c8c8c;">)</span>
+</pre>
+</div>
+<aside class="notes">
+<p>
+Telling a Human How to do Something with Code Also Sucks.  Let's tell
+Oscar, our gardener to pull all of the weeds out of the flower patch.
+Oh no!  We forgot to tell him to be careful about the bulbs with no
+sprouts which we've planted but aren't yet visible!
+</p>
+
+</aside>
 <div class="slide-footer"></div>
 </section>
-<section id="slide-orgb348ee1" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<section id="slide-org5ddd38f" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
 <div class="slide-header"></div>
-<h3 id="orgb348ee1">Zoom in and Explain Some Functions</h3>
+<h3 id="org5ddd38f"></h3>
+<div class="org-src-container">
+
+<pre  class="src src-clojure"><span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">let</span> <span style="color: #93a8c6;">[</span>only-weeds <span style="color: #b0b1a3;">(</span>partial filter is-flower-or-bulb<span style="color: #b0b1a3;">)</span><span style="color: #93a8c6;">]</span>
+  <span style="color: #93a8c6;">(</span>map <span style="color: #b0b1a3;">(</span>comp pull-out-weeds only-weeds<span style="color: #b0b1a3;">)</span> flower-patches<span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+</pre>
+</div>
+<aside class="notes">
+<p>
+There we go.  Isn't that much better.
+</p>
+
+</aside>
 <div class="slide-footer"></div>
 </section>
-<section id="slide-org0eba59b" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<section id="slide-org20c9e89" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
 <div class="slide-header"></div>
-<h3 id="org0eba59b">Why Did I Do it This Way (What did Ed of Last Year See?!)</h3>
+<h3 id="org20c9e89"></h3>
+<div class="org-src-container">
+
+<pre  class="src src-clojure"><span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">let</span> <span style="color: #93a8c6;">[</span>cappuccino-ingredients '<span style="color: #b0b1a3;">(</span>steamed-milk espresso foam<span style="color: #b0b1a3;">)</span>
+      empty-cup              '<span style="color: #b0b1a3;">()</span>
+      pour                   <span style="color: #b0b1a3;">(</span><span style="color: #c678dd; font-weight: bold;">fn</span> <span style="color: #97b098;">[</span>liquid cup<span style="color: #97b098;">]</span> <span style="color: #97b098;">(</span>cons liquid cup<span style="color: #97b098;">)</span><span style="color: #b0b1a3;">)</span><span style="color: #93a8c6;">]</span>
+  <span style="color: #93a8c6;">(</span>reduce <span style="color: #b0b1a3;">(</span><span style="color: #c678dd; font-weight: bold;">fn</span> <span style="color: #97b098;">[</span>ingredient coffee<span style="color: #97b098;">]</span>
+            <span style="color: #97b098;">(</span><span style="color: #c678dd; font-weight: bold;">if</span> <span style="color: #aebed8;">(</span>contains? cappuccino-ingredients ingredient<span style="color: #aebed8;">)</span>
+              <span style="color: #aebed8;">(</span>pour ingredient coffee<span style="color: #aebed8;">)</span>
+              coffee<span style="color: #97b098;">)</span><span style="color: #b0b1a3;">)</span>
+          empty-cup
+          '<span style="color: #b0b1a3;">(</span>steamed-milk knife cold-milk hot-water espresso
+            muffin foam chocolate-syrup sprinkles coffee-grinder
+            unpaid-e-toll filter-coffee<span style="color: #b0b1a3;">)</span><span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+</pre>
+</div>
+
+<aside class="notes">
+<p>
+But what if we want to describe how to make a really good coffee?
+Let's try it with some flair this time!  Well my friend let me tell
+you.  You simply let cappuccino ingredients be the list containing
+steamed-milk, espresso and foam.  Grab yourself an empty list and name
+it by the vessel into which our delectable stimulant will appear.
+Dunno how to pour, well that's fine because all we need to do is join
+one liquid straight onto the head of the rest.
+</p>
+
+<p>
+Ready for the magical part?  Oldest trick in the book, we simply look
+at everything coffee related in the kitchen until we find the things
+which are part of the cappuccino ingredients and pour them in.  Enjoy.
+</p>
+
+</aside>
 <div class="slide-footer"></div>
 </section>
-<section id="slide-org651f9d8" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
-<div class="slide-header"></div>
-<h3 id="org651f9d8">Literate Version (Core Idea First)</h3>
-<div class="slide-footer"></div>
 </section>
-<section id="slide-org4189964" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<section>
+<section id="slide-org6dde286" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
 <div class="slide-header"></div>
-<h2 id="org4189964">Show them the Micro Service Code</h2>
-<div class="outline-text-2" id="text-org4189964">
+<h2 id="org6dde286">What is Literate Programming</h2>
+<div class="outline-text-2" id="text-org6dde286">
 </div><div class="slide-footer"></div>
 </section>
-<section id="slide-org2d88ba4" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<section id="slide-org82a8ae1" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
 <div class="slide-header"></div>
-<h3 id="org2d88ba4">Searching for Parts of the System</h3>
+<h3 id="org82a8ae1">Docstrings&#x2026;</h3>
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<tbody>
+<tr>
+<td class="org-left">java.lang.String</td>
+<td class="org-left">beanName</td>
+</tr>
+
+<tr>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">The ejb-name of the Enterprise Java Bean to which this reference is mapped.</td>
+</tr>
+
+<tr>
+<td class="org-left">java.lang.String</td>
+<td class="org-left">description</td>
+</tr>
+
+<tr>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">A string describing the bean.</td>
+</tr>
+</tbody>
+</table>
+<aside class="notes">
+<p>
+You Might Be Thinking of Docstrings
+You Are Wrong! &#x2013; Who Understands EJBs by Reading the Doc
+</p>
+
+</aside>
+
 <div class="slide-footer"></div>
 </section>
-<section id="slide-org6e23529" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<section id="slide-orgfe6af49" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
 <div class="slide-header"></div>
-<h3 id="org6e23529">Reading the Description and Stuff</h3>
+<h3 id="orgfe6af49">Invented by Knuth</h3>
+
+<div class="figure">
+<p><img src="./Knuth-Is-My-Homeboy.png" alt="Knuth-Is-My-Homeboy.png" />
+</p>
+</div>
+
+<p>
+(source: <a href="https://blog.codinghorror.com/the-enduring-art-of-computer-programming/">https://blog.codinghorror.com/the-enduring-art-of-computer-programming/</a>)
+</p>
+
 <div class="slide-footer"></div>
 </section>
-<section id="slide-org5adb3df" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<section id="slide-org72b33c7" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
 <div class="slide-header"></div>
-<h3 id="org5adb3df">Update a Route to Greet Everyone at the Meetup</h3>
+<h3 id="org72b33c7">Write a Document which Happens to Contain Code</h3>
+<aside class="notes">
+<p>
+Idea is Simpler
+Natural Language + Code = Mind Blown
+Talk About the Idea and Sprinkle in Some Code When Needed
+</p>
+
+</aside>
+
 <div class="slide-footer"></div>
 </section>
-<section id="slide-org452e3fa" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<section id="slide-orgcb73991" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
 <div class="slide-header"></div>
-<h2 id="org452e3fa">Show them the Micro Service Document</h2>
+<h3 id="orgcb73991"></h3>
+<div class="org-src-container">
+
+<pre  class="src src-org"><span style="color: #61afef; font-weight: bold;">* Merge Sort</span>
+The trick is to sort every singleton list and then sort the
+resulting combinations of lists until there is only one list
+left.
+
+<span style="color: #9eac8c; background-color: #3d4a41; font-size: 90%;">#+BEGIN_SRC clojure</span>
+<span style="color: #b3b3b3;">  </span><span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">defn</span><span style="color: #b3b3b3;"> </span><span style="color: #61afef;">merge-sort</span>
+<span style="color: #b3b3b3;">    </span><span style="color: #93a8c6;">[</span><span style="color: #b3b3b3;">xs</span><span style="color: #93a8c6;">]</span>
+<span style="color: #b3b3b3;">    </span><span style="color: #93a8c6;">(</span><span style="color: #c678dd; font-weight: bold;">let</span><span style="color: #b3b3b3;"> </span><span style="color: #b0b1a3;">[</span><span style="color: #b3b3b3;">pairs</span>
+<span style="color: #b3b3b3;">          &lt;&lt;pairs&gt;&gt;</span><span style="color: #b0b1a3;">]</span>
+<span style="color: #b3b3b3;">      </span><span style="color: #b0b1a3;">(</span><span style="color: #c678dd; font-weight: bold;">loop</span><span style="color: #b3b3b3;"> </span><span style="color: #97b098;">[</span><span style="color: #b3b3b3;">lists </span><span style="color: #aebed8;">(</span><span style="color: #b3b3b3;">map list xs</span><span style="color: #aebed8;">)</span><span style="color: #97b098;">]</span>
+<span style="color: #b3b3b3;">        </span><span style="color: #97b098;">(</span><span style="color: #c678dd; font-weight: bold;">if</span><span style="color: #b3b3b3;"> </span><span style="color: #aebed8;">(</span><span style="color: #b3b3b3;">&gt; 1 </span><span style="color: #b0b0b3;">(</span><span style="color: #b3b3b3;">length lists</span><span style="color: #b0b0b3;">)</span><span style="color: #aebed8;">)</span>
+<span style="color: #b3b3b3;">          </span><span style="color: #aebed8;">(</span><span style="color: #c678dd; font-weight: bold;">recur</span><span style="color: #b3b3b3;"> </span><span style="color: #b0b0b3;">(</span><span style="color: #b3b3b3;">map</span>
+<span style="color: #b3b3b3;">                  &lt;&lt;merge&gt;&gt; </span><span style="color: #90a890;">(</span><span style="color: #b3b3b3;">pairs lists</span><span style="color: #90a890;">)</span><span style="color: #b0b0b3;">)</span><span style="color: #aebed8;">)</span>
+<span style="color: #b3b3b3;">          </span><span style="color: #aebed8;">(</span><span style="color: #b3b3b3;">first lists</span><span style="color: #aebed8;">)</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">)</span><span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+<span style="color: #9eac8c; background-color: #3d4a41; font-size: 90%;">#+END_SRC</span>
+</pre>
+</div>
+
+<div class="slide-footer"></div>
+</section>
+<section id="slide-orga5a3c7d" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h3 id="orga5a3c7d"></h3>
+<div class="org-src-container">
+
+<pre  class="src src-org">Given two sorted lists, xs and ys we can create a sorted list zs, 
+by consuming the next smallest element from either.  If one of 
+them is empty then we then we simply concatenate it to the 
+result list.
+<span style="color: #9eac8c; background-color: #3d4a41; font-size: 90%;">#+BEGIN_SRC clojure :noweb-ref merge</span>
+<span style="color: #b3b3b3;">  </span><span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">fn</span><span style="color: #b3b3b3;"> </span><span style="color: #61afef;">merge</span>
+<span style="color: #b3b3b3;">    </span><span style="color: #93a8c6;">[</span><span style="color: #b3b3b3;">xs ys zs</span><span style="color: #93a8c6;">]</span>
+<span style="color: #b3b3b3;">    </span><span style="color: #93a8c6;">(</span><span style="color: #c678dd; font-weight: bold;">let</span><span style="color: #b3b3b3;"> </span><span style="color: #b0b1a3;">[</span><span style="color: #b3b3b3;">other-list </span><span style="color: #97b098;">(</span><span style="color: #c678dd; font-weight: bold;">if</span><span style="color: #b3b3b3;"> </span><span style="color: #aebed8;">(</span><span style="color: #b3b3b3;">empty? ys</span><span style="color: #aebed8;">)</span><span style="color: #b3b3b3;"> xs </span><span style="color: #aebed8;">(</span><span style="color: #c678dd; font-weight: bold;">if</span><span style="color: #b3b3b3;"> </span><span style="color: #b0b0b3;">(</span><span style="color: #b3b3b3;">empty? xs</span><span style="color: #b0b0b3;">)</span><span style="color: #b3b3b3;"> ys</span><span style="color: #aebed8;">)</span><span style="color: #b3b3b3;"> </span><span style="color: #da8548; font-weight: bold;">nil</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">]</span>
+<span style="color: #b3b3b3;">      </span><span style="color: #b0b1a3;">(</span><span style="color: #c678dd; font-weight: bold;">if</span><span style="color: #b3b3b3;"> </span><span style="color: #97b098;">(</span><span style="color: #b3b3b3;">null? empty-list</span><span style="color: #97b098;">)</span>
+<span style="color: #b3b3b3;">        </span><span style="color: #97b098;">(</span><span style="color: #c678dd; font-weight: bold;">let</span><span style="color: #b3b3b3;"> </span><span style="color: #aebed8;">[</span><span style="color: #b3b3b3;">x </span><span style="color: #b0b0b3;">(</span><span style="color: #b3b3b3;">first xs</span><span style="color: #b0b0b3;">)</span>
+<span style="color: #b3b3b3;">              y </span><span style="color: #b0b0b3;">(</span><span style="color: #b3b3b3;">first ys</span><span style="color: #b0b0b3;">)</span><span style="color: #aebed8;">]</span>
+<span style="color: #b3b3b3;">          </span><span style="color: #aebed8;">(</span><span style="color: #c678dd; font-weight: bold;">if</span><span style="color: #b3b3b3;"> </span><span style="color: #b0b0b3;">(</span><span style="color: #b3b3b3;">&lt;= x y</span><span style="color: #b0b0b3;">)</span>
+<span style="color: #b3b3b3;">            </span><span style="color: #b0b0b3;">(</span><span style="color: #b3b3b3;">merge </span><span style="color: #90a890;">(</span><span style="color: #b3b3b3;">rest xs</span><span style="color: #90a890;">)</span><span style="color: #b3b3b3;"> ys        </span><span style="color: #90a890;">(</span><span style="color: #b3b3b3;">cons x zs</span><span style="color: #90a890;">)</span><span style="color: #b0b0b3;">)</span>
+<span style="color: #b3b3b3;">            </span><span style="color: #b0b0b3;">(</span><span style="color: #b3b3b3;">merge xs        </span><span style="color: #90a890;">(</span><span style="color: #b3b3b3;">rest ys</span><span style="color: #90a890;">)</span><span style="color: #b3b3b3;"> </span><span style="color: #90a890;">(</span><span style="color: #b3b3b3;">cons y zs</span><span style="color: #90a890;">)</span><span style="color: #b0b0b3;">)</span><span style="color: #aebed8;">)</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">)</span>
+<span style="color: #b3b3b3;">      </span><span style="color: #b0b1a3;">(</span><span style="color: #b3b3b3;">concat other-list zs</span><span style="color: #b0b1a3;">)</span><span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+<span style="color: #9eac8c; background-color: #3d4a41; font-size: 90%;">#+END_SRC</span>
+</pre>
+</div>
+
+<div class="slide-footer"></div>
+</section>
+<section id="slide-org5f11975" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h3 id="org5f11975"></h3>
+<div class="org-src-container">
+
+<pre  class="src src-org">To get the pairs of lists we take two then drop two until there's
+nothing left.
+
+<span style="color: #9eac8c; background-color: #3d4a41; font-size: 90%;">#+BEGIN_SRC clojure</span>
+<span style="color: #b3b3b3;">  </span><span style="color: #8c8c8c;">(</span><span style="color: #c678dd; font-weight: bold;">fn</span><span style="color: #b3b3b3;"> </span><span style="color: #61afef;">pairs</span>
+<span style="color: #b3b3b3;">    </span><span style="color: #93a8c6;">[</span><span style="color: #b3b3b3;">xs</span><span style="color: #93a8c6;">]</span>
+<span style="color: #b3b3b3;">    </span><span style="color: #93a8c6;">(</span><span style="color: #c678dd; font-weight: bold;">if</span><span style="color: #b3b3b3;"> </span><span style="color: #b0b1a3;">(</span><span style="color: #b3b3b3;">empty? xs</span><span style="color: #b0b1a3;">)</span><span style="color: #b3b3b3;"> xs</span>
+<span style="color: #b3b3b3;">        </span><span style="color: #b0b1a3;">(</span><span style="color: #b3b3b3;">cons </span><span style="color: #97b098;">(</span><span style="color: #b3b3b3;">take 2 xs</span><span style="color: #97b098;">)</span>
+<span style="color: #b3b3b3;">              </span><span style="color: #97b098;">(</span><span style="color: #b3b3b3;">pairs </span><span style="color: #aebed8;">(</span><span style="color: #b3b3b3;">drop 2 xs</span><span style="color: #aebed8;">)</span><span style="color: #97b098;">)</span><span style="color: #b0b1a3;">)</span><span style="color: #93a8c6;">)</span><span style="color: #8c8c8c;">)</span>
+<span style="color: #9eac8c; background-color: #3d4a41; font-size: 90%;">#+END_SRC</span>
+</pre>
+</div>
+
+<div class="slide-footer"></div>
+</section>
+<section id="slide-org905201f" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h3 id="org905201f">Tangling and Weaving</h3>
+<aside class="notes">
+<p>
+Two Principles: Tangle and Weave
+</p>
+
+</aside>
+<div class="slide-footer"></div>
+</section>
+</section>
+<section>
+<section id="slide-org18ab581" data-background="" data-background-size="" data-background-position="" data-background-repeat="" data-background-transition="">
+<div class="slide-header"></div>
+<h2 id="org18ab581">Real(ish) Project Time!</h2>
+
+<div class="figure">
+<p><img src="./Your-Lecture-Is-Interesting.jpg" alt="Your-Lecture-Is-Interesting.jpg" />
+</p>
+</div>
+
+<p>
+(source: <a href="http://myhashapp.com/blog/?p=44">http://myhashapp.com/blog/?p=44</a>)
+</p>
 <div class="slide-footer"></div>
 </section>
 </section>
